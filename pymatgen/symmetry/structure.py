@@ -134,7 +134,7 @@ class SymmetrizedStructure(Structure):
 
         return specie_labels
 
-    def get_distinct_bonds(self,r,dr,sigfig=3):
+    def get_distinct_bonds(self,r,dr,sigfig=3,with_labels=True):
         """
         Returns symmetrically distinct bond lengths up to a certain radius.
 
@@ -143,14 +143,13 @@ class SymmetrizedStructure(Structure):
             dr (float): Width of shell.
             sigfig (int):
                 Significant figures to distinguishing between bond lengths.
+            with_labels (bool):
+                Return bonds with specie labels. If False, use equivalent
+                site indices.
+
+        Returns:
+            Set of symmetrically distinct bonds with length between r and r+dr.
         """
-
-        equiv_by_specie = self.get_equiv_by_specie
-        specie_labels = self.get_specie_labels()
-
-        # Get all pairwise species combinations
-        species = map(str,self.composition.elements)
-        #bonds = set(combinations_with_replacement(species,2))
 
         bonds = set()
 
@@ -162,6 +161,18 @@ class SymmetrizedStructure(Structure):
                 dist = unicode.format('{0:.'+unicode(sigfig)+'f}',
                                       round(n[1],sigfig))
                 bonds.add((equiv,dist))
-        return bonds
+
+        return_bonds = bonds
+
+        if with_labels == True:
+            bonds_labeled = set()
+            specie_labels = self.get_specie_labels()
+            for b in bonds:
+                bonds_labeled.add((
+                    (specie_labels[b[0][0]],specie_labels[b[0][1]]),
+                    b[1]))
+            return_bonds = bonds_labeled
+            
+        return bonds_labeled
 
 #    def get_distinct_angles(self):
