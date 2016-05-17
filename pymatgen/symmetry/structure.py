@@ -159,7 +159,7 @@ class SymmetrizedStructure(Structure):
                                              include_index=True)
             for n in neigh:
                 equiv = tuple(sorted([index,self.site_labels[n[2]]]))
-                dist = str.format('{0:.'+str(sigfig)+'f}',round(n[1],sigfig))
+                dist = unicode.format('{0:.'+str(sigfig)+'f}',round(n[1],sigfig))
                 bonds.update((equiv,dist))
 
         return bonds
