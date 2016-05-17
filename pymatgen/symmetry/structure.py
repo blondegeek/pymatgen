@@ -233,5 +233,5 @@ class SymmetrizedStructure(Structure):
                     a[2]))
             return_angles = angles_labeled
             
-        return angles_labeled
+        return return_angles
 
