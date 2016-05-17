@@ -4,6 +4,7 @@
 
 from __future__ import division, unicode_literals
 from itertools import combinations
+import math
 
 """
 This module implements symmetry-related structure forms.
@@ -208,7 +209,12 @@ class SymmetrizedStructure(Structure):
             for p in pairs:
                 ind1 = p[0][2]
                 ind2 = p[1][2]
-                angle = self.get_angle(ind1,index,ind2)
+
+                A=p[0][0].coords-self[index].coords
+                B=p[1][0].coords-self[index].coords
+                angle=np.degrees(
+                    math.acos(np.dot(A,B)/(np.linalg.norm(A)*np.linalg.norm(B))))
+                
                 angle = unicode.format('{0:.'+unicode(sigfig)+'f}',
                                       round(angle,sigfig))
                 equiv = tuple(sorted([self.site_labels[ind1],
