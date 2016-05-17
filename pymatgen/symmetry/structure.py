@@ -3,6 +3,7 @@
 # Distributed under the terms of the MIT License.
 
 from __future__ import division, unicode_literals
+from itertools import combinations_with_replacement
 
 """
 This module implements symmetry-related structure forms.
@@ -77,3 +78,53 @@ class SymmetrizedStructure(Structure):
                 return sites
 
         raise ValueError("Site not in structure")
+
+    def get_equiv_by_species(self):
+        """
+        Returns dictionary with { specie : list of equiv positions}
+        """
+
+        equiv_by_species = {}
+        for i in self.composition.elements:
+            equiv_by_species.update({str(i):[]})
+
+        for i in set(self.site_labels):
+            site = self[i]
+            equiv_by_species[str(site.specie)].append(i)
+
+        return equiv_by_species
+
+    def get_atom_labels(self):
+        """
+        Labels site by species and equivalent site number. Useful for generating
+        traditional crystal structure tables.
+
+        The index of the equivalent position for a given element 
+        name gives atom number. For equiv_by_species,
+              {'Ir':[0,4,6],'O':[8,10]} 
+        get_atom_labels would return atom labels
+              { 0 : 'Ir1', 4 : 'Ir2', 6 : 'Ir3', 8 : 'O1', 10 : 'O2'}
+        """
+
+        equiv_by_species = self.get_equiv_by_species()
+
+        atom_labels = {}
+        for i in set(self.site_labels):
+            label = str(self[i].specie)
+            label += str(equiv_by_species[str(self[i].specie)].index(i)+1)
+            atom_labels.update({i : label})
+
+        return atom_labels
+
+#    def get_distinct_bonds(self,r,dr,bonds=None):
+#        """
+#        Returns symmetrically distinct bond lengths up to a certain radius.
+#
+#        """
+#        equiv_by_species = self.get_equiv_by_species
+#        atom_labels = self.get_atom_labels()
+#
+#        if bonds == None:
+#            
+#
+#    def get_distinct_angles(self):
