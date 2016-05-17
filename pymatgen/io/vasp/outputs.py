@@ -1367,6 +1367,8 @@ class Outcar(MSONable):
         # reverse parsing is very difficult
         read_charge = False
         read_mag = False
+        read_magy = False
+        read_magz = False
         all_lines.reverse()
         for clean in all_lines:
             if read_charge or read_mag:
@@ -1381,11 +1383,17 @@ class Outcar(MSONable):
                         toks.pop(0)
                         if read_charge:
                             charge.append(dict(zip(header, toks)))
-                        else:
+                        elif read_mag:
                             mag.append(dict(zip(header, toks)))
+                        elif read_magy:
+                            magy.append(dict(zip(header,toks)))
+                        else:
+                            magz.append(dict(zip(header, toks)))
                     elif clean.startswith('tot'):
                         read_charge = False
                         read_mag = False
+                        read_magy = False
+                        read_magz = False
             if clean == "total charge":
                 charge = []
                 read_charge = True
@@ -1394,6 +1402,14 @@ class Outcar(MSONable):
                 mag = []
                 read_mag = True
                 read_charge = False
+            elif clean == "magnetization (y)":
+                magy = []
+                read_magy = True
+                read_mag = False
+            elif clean == "magnetization (z)":
+                magz = []
+                read_magz = True
+                read_magy = False
 
         # data from beginning of OUTCAR
         run_stats['cores'] = 0
@@ -1405,6 +1421,11 @@ class Outcar(MSONable):
 
         self.run_stats = run_stats
         self.magnetization = tuple(mag)
+        # For noncollinear magnetism
+        self.magnetizationx = tuple(mag)
+        self.magnetizationy = tuple(magy)
+        self.magnetizationz = tuple(magz)
+
         self.charge = tuple(charge)
         self.efermi = efermi
         self.nelect = nelect
