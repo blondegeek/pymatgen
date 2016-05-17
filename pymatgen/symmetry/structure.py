@@ -155,7 +155,7 @@ class SymmetrizedStructure(Structure):
         bonds = set()
 
         for index in set(self.site_labels):
-            neigh = s.get_neighbors_in_shell(self[index].coords,r,dr,
+            neigh = self.get_neighbors_in_shell(self[index].coords,r,dr,
                                              include_index=True)
             for n in neigh:
                 equiv = tuple(sorted([index,self.site_labels[n[2]]]))
