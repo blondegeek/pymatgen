@@ -969,6 +969,187 @@ class BSPlotterProjected(BSPlotter):
         plt.ylim(data['vbm'][0][1] - 4.0, data['cbm'][0][1] + 2.0)
         return plt
 
+    def get_color_grouped(self,groups,zero_to_efermi=True,ylim=None,
+                          vbm_cbm_marker=False,sm=0,plt=None):
+        """
+        Returns scatter plot built from smooth spline of bands where color 
+        circles depends on percentage mixing of groups.
+
+        Args:
+            groups: 
+                list of dictionaries that indicate which atomic projectsions
+                by element are to be grouped and which color will identify
+                that group.
+
+                Example: 
+                    [{'elements':['Ag','Se'],'color':[255,0,0]},
+                    {'elements':['C','H'],'color':[0,0,255]}]
+
+        """
+        
+        from pymatgen.util.plotting_utils import get_publication_quality_plot
+        from matplotlib import rc
+        import scipy.interpolate as scint
+
+        increment = 100
+
+        rc('text', usetex=True)
+
+        band_linewidth = 1.0
+        
+        elements = []
+        for g in groups:
+            elements += g['elements']
+        elements = list(set(elements))
+        
+        dictio = { e : ['s','p','d'] for e in elements}
+
+        proj = self._get_projections_by_branches(dictio)
+
+        data = self.bs_plot_data(zero_to_efermi)
+        if plt == None:
+            plt = get_publication_quality_plot(12, 8, plt=plt)
+        #plt = get_publication_quality_plot(12, 8)
+        e_min = -4
+        e_max = 4
+        if self._bs.is_metal():
+            e_min = -10
+            e_max = 10
+        count = 1
+
+        for d in range(len(data['distances'])):
+            for i in range(self._nb_bands):
+                # Get band interpolation
+                tck = scint.splrep(
+                    data['distances'][d],
+                    [data['energy'][d][str(Spin.up)][i][j]
+                     for j in range(len(data['distances'][d]))],s=sm)
+                step = (data['distances'][d][-1]
+                        - data['distances'][d][0]) / increment
+                        
+                # Get color interpolation.
+                # Get interpolation for each orbital for current band
+                groupInter = []
+                for g in groups:
+                    x = data['distances'][d]
+                    y = np.array([0.0]*len(data['distances'][d]))
+                    for el in g['elements']:
+                        if 'orbitals' not in g:
+                            for o in ['s','p','d']:
+                                y_new = np.array([proj[d][str(Spin.up)][i][j][el][o] 
+                                         for j in range(len(data['distances'][d]))])
+                                y = y + y_new
+                    tck_o = scint.splrep(x,y,s=sm)
+                    groupInter.append(tck_o)
+
+                # NOW THE FANCY PART WHERE ALL ZE INTERPOLATIONS ARE USED
+                # to plot the current band i
+                
+                # Definition that uses several globals to get projections
+                def sumProj(k):
+                    ind_tot = [scint.splev(k * step + data['distances'][d][0],
+                                           gint, der=0)
+                               for gint in groupInter]
+                    tot = sum(ind_tot)
+                    return tot,ind_tot
+                
+                xs = [x * step + data['distances'][d][0] 
+                      for x in range(increment)]
+
+                cs = [] 
+
+                for x in range(increment):
+                    tot, ind_tot = sumProj(x)
+                    ind_tot = np.array(ind_tot)/np.linalg.norm(ind_tot)
+                    color = np.array([0.0]*3)
+                    for i,g in enumerate(groups):
+                        color += ind_tot[i]*np.array(g['color'])/255.0
+                    color = [ min(abs(m),1) for m in color ]
+                    #print(color)
+                    cs.append(color)
+
+                ys = [scint.splev(x * step + data['distances'][d][0],
+                                  tck, der=0)
+                      for x in range(increment)]
+
+                plt.scatter(xs,ys,c=cs,marker="o",edgecolors='none')
+
+# TEST NON SPIN POLARIZED CASE FIRST
+
+#                if self._bs.is_spin_polarized:
+#                    # handle spin polarized case
+#                    tck = scint.splrep(
+#                        data['distances'][d],
+#                        [data['energy'][d][str(Spin.down)][i][j]
+#                         for j in range(len(data['distances'][d]))])
+#                    step = (data['distances'][d][-1]
+#                            - data['distances'][d][0]) / 1000
+#                    # Get interpolation for each orbital for current band
+#                    orbInter = []
+#                    for el in dictio:
+#                        for o in dictio[el]:
+#                            tck_o = scint.splrep(
+#                                data['distances'][d],
+#                                [proj[d][str(Spin.down)][i][j] 
+#                                 for j in range(len(data['distances'][d]))]
+#                            )
+#                            orbInter.append(tck_o)
+#
+#
+#                    plt.plot([x * step + data['distances'][d][0]
+#                              for x in range(1000)],
+#                             [scint.splev(
+#                                 x * step + data['distances'][d][0],
+#                                 tck, der=0)
+#                              for x in range(1000)], 'r--',
+#                             linewidth=band_linewidth)
+
+        self._maketicks(plt)
+
+        # Main X and Y Labels
+        plt.xlabel(r'$\mathrm{Wave\ Vector}$', fontsize=30)
+        ylabel = r'$\mathrm{E\ -\ E_f\ (eV)}$' if zero_to_efermi \
+            else r'$\mathrm{Energy\ (eV)}$'
+        plt.ylabel(ylabel, fontsize=30)
+
+        # Draw Fermi energy, only if not the zero
+        if not zero_to_efermi:
+            ef = self._bs.efermi
+            plt.axhline(ef, linewidth=2, color='k')
+
+        # X range (K)
+        # last distance point
+        x_max = data['distances'][-1][-1]
+        plt.xlim(0, x_max)
+
+        if ylim is None:
+            if self._bs.is_metal():
+                if zero_to_efermi:
+                    plt.ylim(e_min, e_max)
+                else:
+                    plt.ylim(self._bs.efermi + e_min, self._bs._efermi
+                             + e_max)
+            else:
+                if vbm_cbm_marker:
+                    for cbm in data['cbm']:
+                        plt.scatter(cbm[0], cbm[1], color='r',
+                                    marker='o',
+                                    s=100)
+
+                    for vbm in data['vbm']:
+                        plt.scatter(vbm[0], vbm[1], color='g',
+                                    marker='o',
+                                    s=100)
+
+                plt.ylim(data['vbm'][0][1] + e_min, data['cbm'][0][1]
+                         + e_max)
+        else:
+            plt.ylim(ylim)
+        
+        plt.tight_layout()
+
+        return plt
+
 class BoltztrapPlotter(object):
     """
     class containing methods to plot the data from Boltztrap.
