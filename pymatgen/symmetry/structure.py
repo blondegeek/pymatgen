@@ -3,7 +3,7 @@
 # Distributed under the terms of the MIT License.
 
 from __future__ import division, unicode_literals
-from itertools import combinations_with_replacement
+from itertools import combinations
 
 """
 This module implements symmetry-related structure forms.
@@ -149,6 +149,10 @@ class SymmetrizedStructure(Structure):
 
         Returns:
             Set of symmetrically distinct bonds with length between r and r+dr.
+            {((start,end),dist_str}
+            
+            Distances are returned as a string rounded and truncated
+            to the significant digit defined by arguement sigfig.
         """
 
         bonds = set()
@@ -175,4 +179,53 @@ class SymmetrizedStructure(Structure):
             
         return bonds_labeled
 
-#    def get_distinct_angles(self):
+    def get_distinct_angles(self,r,dr,sigfig=3,with_labels=True):
+        """
+        Return symmetrically distinct bond angles for atoms within r to 
+        r+dr from the central atom.
+
+        Args:
+            r (float): Inner radius of shell.
+            dr (float): Width of shell.
+            sigfig (int):
+                Significant figures to distinguishing between bond lengths.
+            with_labels (bool):
+                Return bonds with specie labels. If False, use equivalent
+                site indices.
+
+        Returns:
+            Set of tuples of bond angle details. 
+            {((start,end), center, dist_str), ...}
+        """
+
+        angles = set()
+
+        for index in set(self.site_labels):
+            neigh = self.get_neighbors_in_shell(self[index].coords,r,dr,
+                                             include_index=True)
+            pairs = set(combinations(neigh,2))
+            
+            for p in pairs:
+                ind1 = p[0][2]
+                ind2 = p[1][2]
+                angle = self.get_angle(ind1,index,ind2)
+                angle = unicode.format('{0:.'+unicode(sigfig)+'f}',
+                                      round(angle,sigfig))
+                equiv = tuple(sorted([self.site_labels[ind1],
+                                      self.site_labels[ind2]]))
+                angles.add((equiv,index,angle))
+                
+        return_angles = angles
+
+        if with_labels == True:
+            angles_labeled = set()
+            specie_labels = self.get_specie_labels()
+            for a in angles:
+                angles_labeled.add((
+                    (specie_labels[a[0][0]],specie_labels[a[0][1]]),
+                    specie_labels[a[1]],
+                    a[2]))
+            return_angles = angles_labeled
+            
+        return angles_labeled
+
