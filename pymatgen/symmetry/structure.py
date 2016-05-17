@@ -161,7 +161,7 @@ class SymmetrizedStructure(Structure):
                 equiv = tuple(sorted([index,self.site_labels[n[2]]]))
                 dist = unicode.format('{0:.'+unicode(sigfig)+'f}',
                                       round(n[1],sigfig))
-                bonds.update(((equiv,dist)))
+                bonds.add((equiv,dist))
         return bonds
 
 #    def get_distinct_angles(self):
