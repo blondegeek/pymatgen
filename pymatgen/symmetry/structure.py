@@ -210,10 +210,12 @@ class SymmetrizedStructure(Structure):
                 ind1 = p[0][2]
                 ind2 = p[1][2]
 
-                A=p[0][0].coords-self[index].coords
-                B=p[1][0].coords-self[index].coords
-                angle=np.degrees(
-                    math.acos(np.dot(A,B)/(np.linalg.norm(A)*np.linalg.norm(B))))
+                A = p[0][0].coords-self[index].coords
+                B = p[1][0].coords-self[index].coords
+                    
+                arg = np.dot(A,B)/(np.linalg.norm(A)*np.linalg.norm(B))
+                arg = min(1,max(arg,-1))
+                angle = np.degrees(math.acos(arg))
                 
                 angle = unicode.format('{0:.'+unicode(sigfig)+'f}',
                                       round(angle,sigfig))
