@@ -213,7 +213,9 @@ class SymmetrizedStructure(Structure):
                 A = p[0][0].coords-self[index].coords
                 B = p[1][0].coords-self[index].coords
                     
-                arg = np.dot(A,B)/(np.linalg.norm(A)*np.linalg.norm(B))
+                # handle if zero
+                denom = np.linalg.norm(A)*np.linalg.norm(B)
+                arg = np.dot(A,B)/denom
                 arg = min(1,max(arg,-1))
                 angle = np.degrees(math.acos(arg))
                 
