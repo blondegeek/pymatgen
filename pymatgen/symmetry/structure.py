@@ -177,8 +177,10 @@ class SymmetrizedStructure(Structure):
                     (specie_labels[b[0][0]],specie_labels[b[0][1]]),
                     b[1]))
             return_bonds = bonds_labeled
+
+        return_bonds = sorted(list(return_bonds),key=lambda x: (x[0],x[1]))
             
-        return bonds_labeled
+        return return_bonds
 
     def get_distinct_angles(self,r,dr,sigfig=3,with_labels=True):
         """
@@ -236,6 +238,8 @@ class SymmetrizedStructure(Structure):
                     specie_labels[a[1]],
                     a[2]))
             return_angles = angles_labeled
+
+        return_angles = sorted(list(return_angles),key=lambda x: (x[0],x[1]))
             
         return return_angles
 
