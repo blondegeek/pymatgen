@@ -116,7 +116,8 @@ class DosPlotter(object):
         """
         return jsanitize(self._doses)
 
-    def get_plot(self, xlim=None, ylim=None):
+    def get_plot(self, xlim=None, ylim=None, width=12, height=8, plt=None,
+                     orientation=None):
         """
         Get a matplotlib plot showing the DOS.
 
@@ -135,7 +136,7 @@ class DosPlotter(object):
         y = None
         alldensities = []
         allenergies = []
-        plt = get_publication_quality_plot(12, 8)
+        plt = get_publication_quality_plot(width, height, plt=plt)
 
         # Note that this complicated processing of energies is to allow for
         # stacked plots in matplotlib.
@@ -174,7 +175,17 @@ class DosPlotter(object):
                     x.extend(energies)
                     y.extend(densities)
             allpts.extend(list(zip(x, y)))
-            if self.stack:
+            if orientation != None:
+                x,y = y,x
+
+                if self.stack:
+                    plt.fill_between(x, y, colors=colors[i % ncolors],
+                                    label=str(key))
+                else:
+                    ppl.plot(x, y, color=colors[i % ncolors],
+                        label=str(key), linewidth=3)
+
+            elif self.stack:
                 plt.fill(x, y, color=colors[i % ncolors],
                          label=str(key))
             else:
