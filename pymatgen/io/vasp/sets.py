@@ -1622,7 +1622,7 @@ class DerivedVaspInputSet(six.with_metaclass(abc.ABCMeta, MSONable)):
 class MPStaticSet(DerivedVaspInputSet):
 
     def __init__(self, structure, prev_incar=None, prev_kpoints=None,
-                 lepsilon=False, reciprocal_density=100, **kwargs):
+                 lepsilon=False, lcalcpol=False, reciprocal_density=100, **kwargs):
         """
         Init a MPStaticSet. Typically, you would use the classmethod
         from_prev_calc instead.
@@ -1642,6 +1642,7 @@ class MPStaticSet(DerivedVaspInputSet):
         self.structure = structure
         self.kwargs = kwargs
         self.lepsilon = lepsilon
+        self.lcalcpol = lcalcpol
         self.parent_vis = MPVaspInputSet(**self.kwargs)
 
     @property
@@ -1663,6 +1664,9 @@ class MPStaticSet(DerivedVaspInputSet):
             # to output ionic.
             incar.pop("NSW", None)
             incar.pop("NPAR", None)
+
+        if self.lcalcpol:
+            incar["LCALCPOL"] = True
 
         for k in ["MAGMOM", "NUPDOWN"] + list(self.kwargs.get(
                 "user_incar_settings", {}).keys()):
