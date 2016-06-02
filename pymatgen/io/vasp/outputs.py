@@ -2038,6 +2038,11 @@ class Outcar(MSONable):
                       'dielectric_ionic_tensor': self.dielectric_ionic_tensor,
                       'born_ion': self.born_ion,
                       'born': self.born})
+
+        if self.lcalcpol:
+            d.update({'p_elec': self.p_elec,
+                      'p_ion': self.p_ion})
+
         return d
 
 
