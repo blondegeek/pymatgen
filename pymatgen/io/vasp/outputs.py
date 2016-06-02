@@ -1420,6 +1420,12 @@ class Outcar(MSONable):
             self.read_lepsilon()
             self.read_lepsilon_ionic()
 
+        self.lcalcpol = False
+        self.read_pattern({'calcpol': 'LCALCPOL   =     T'})
+        if self.data.get('epsilon',[]):
+            self.lcalcpol = True
+            self.read_lcalcpol()
+
     def read_pattern(self, patterns, reverse=False, terminate_on_match=False,
                      postprocess=str):
         """
