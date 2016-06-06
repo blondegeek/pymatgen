@@ -707,15 +707,15 @@ class BSPlotterProjected(BSPlotter):
                              " on a band structure without any")
         super(BSPlotterProjected, self).__init__(bs)
 
-    def _get_projections_by_branches(self, dictio):
-        proj = self._bs.get_projections_on_elts_and_orbitals(dictio)
+    def _get_projections_by_branches(self, dictio,kpoint_offset=0):
+        proj = self._bs.get_projections_on_elts_and_orbitals(dictio,kpoint_offset=kpoint_offset)
         proj_br = []
         print(len(proj[Spin.up]))
         print(len(proj[Spin.up][0]))
-        for c in proj[Spin.up][0]:
-            print(c)
+#        for c in proj[Spin.up][0]:
+#            print(c)
         for b in self._bs._branches:
-            print(b)
+#            print(b)
             if self._bs.is_spin_polarized:
                 proj_br.append(
                     {str(Spin.up): [[] for l in range(self._nb_bands)],
@@ -981,7 +981,7 @@ class BSPlotterProjected(BSPlotter):
         return plt
 
     def get_color_grouped(self,groups,zero_to_efermi=True,ylim=None,
-                          vbm_cbm_marker=False,sm=0,plt=None):
+                          vbm_cbm_marker=False,sm=0,plt=None,kpoint_offset=0):
         """
         Returns scatter plot built from smooth spline of bands where color 
         circles depends on percentage mixing of groups.
@@ -995,6 +995,8 @@ class BSPlotterProjected(BSPlotter):
                 Example: 
                     [{'elements':['Ag','Se'],'color':[255,0,0]},
                     {'elements':['C','H'],'color':[0,0,255]}]
+            kpoint_offset: 
+                Used for HSE calculations to accomodate nonline kpoints
 
         """
         
@@ -1015,7 +1017,7 @@ class BSPlotterProjected(BSPlotter):
         
         dictio = { e : ['s','p','d'] for e in elements}
 
-        proj = self._get_projections_by_branches(dictio)
+        proj = self._get_projections_by_branches(dictio,kpoint_offset=kpoint_offset)
 
         data = self.bs_plot_data(zero_to_efermi)
         if plt == None:
@@ -1047,7 +1049,7 @@ class BSPlotterProjected(BSPlotter):
                     for el in g['elements']:
                         if 'orbitals' not in g:
                             for o in ['s','p','d']:
-                                y_new = np.array([proj[d][str(Spin.up)][i][j][el][o] 
+                                y_new = np.array([proj[d][str(Spin.up)][i][j][el][o]
                                          for j in range(len(data['distances'][d]))])
                                 y = y + y_new
                     tck_o = scint.splrep(x,y,s=sm)
