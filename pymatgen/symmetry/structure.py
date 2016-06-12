@@ -178,7 +178,7 @@ class SymmetrizedStructure(Structure):
                     b[1]))
             return_bonds = bonds_labeled
 
-        return_bonds = sorted(list(return_bonds),key=lambda x: (x[0],x[1]))
+        return_bonds = sorted(list(return_bonds),key=lambda x: (x[0],float(x[1])))
             
         return return_bonds
 
@@ -239,7 +239,7 @@ class SymmetrizedStructure(Structure):
                     a[2]))
             return_angles = angles_labeled
 
-        return_angles = sorted(list(return_angles),key=lambda x: (x[0],x[1]))
+        return_angles = sorted(list(return_angles),key=lambda x: (x[0], x[1], float(x[2])))
             
         return return_angles
 

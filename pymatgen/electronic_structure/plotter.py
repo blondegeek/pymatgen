@@ -117,7 +117,7 @@ class DosPlotter(object):
         return jsanitize(self._doses)
 
     def get_plot(self, xlim=None, ylim=None, width=12, height=8, plt=None,
-                     orientation=None):
+                     orientation=None,colors=None):
         """
         Get a matplotlib plot showing the DOS.
 
@@ -131,7 +131,8 @@ class DosPlotter(object):
         from pymatgen.util.plotting_utils import get_publication_quality_plot
         ncolors = max(3, len(self._doses))
         ncolors = min(9, ncolors)
-        colors = brewer2mpl.get_map('Set1', 'qualitative', ncolors).mpl_colors
+        if colors == None:
+            colors = brewer2mpl.get_map('Set1', 'qualitative', ncolors).mpl_colors
 
         y = None
         alldensities = []
@@ -189,7 +190,7 @@ class DosPlotter(object):
                 plt.fill(x, y, color=colors[i % ncolors],
                          label=str(key))
             else:
-                ppl.plot(x, y, color=colors[i % ncolors],
+                ppl.plot(x, y,color=colors[i % ncolors],
                          label=str(key), linewidth=3)
             if not self.zero_at_efermi:
                 ylim = plt.ylim()
