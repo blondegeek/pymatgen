@@ -1315,6 +1315,8 @@ class Outcar(MSONable):
         # data from end of OUTCAR
         charge = []
         mag = []
+        magy = []
+        magz = []
         header = []
         run_stats = {}
         total_mag = None
@@ -1371,7 +1373,7 @@ class Outcar(MSONable):
         read_magz = False
         all_lines.reverse()
         for clean in all_lines:
-            if read_charge or read_mag:
+            if read_charge or read_mag or read_magy or read_magz:
                 if clean.startswith("# of ion"):
                     header = re.split("\s{2,}", clean.strip())
                     header.pop(0)
@@ -1387,7 +1389,7 @@ class Outcar(MSONable):
                             mag.append(dict(zip(header, toks)))
                         elif read_magy:
                             magy.append(dict(zip(header,toks)))
-                        else:
+                        elif read_magz:
                             magz.append(dict(zip(header, toks)))
                     elif clean.startswith('tot'):
                         read_charge = False
