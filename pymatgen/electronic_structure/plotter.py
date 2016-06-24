@@ -982,7 +982,7 @@ class BSPlotterProjected(BSPlotter):
         return plt
 
     def get_color_grouped(self,groups,zero_to_efermi=True,ylim=None,
-                          vbm_cbm_marker=False,sm=0,plt=None,kpoint_offset=0):
+                          vbm_cbm_marker=False,sm=0,plt=None,kpoint_offset=0,width=12,height=8):
         """
         Returns scatter plot built from smooth spline of bands where color 
         circles depends on percentage mixing of groups.
@@ -1022,7 +1022,7 @@ class BSPlotterProjected(BSPlotter):
 
         data = self.bs_plot_data(zero_to_efermi)
         if plt == None:
-            plt = get_publication_quality_plot(12, 8, plt=plt)
+            plt = get_publication_quality_plot(width, height, plt=plt)
         #plt = get_publication_quality_plot(12, 8)
         e_min = -4
         e_max = 4
