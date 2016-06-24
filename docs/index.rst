@@ -6,6 +6,8 @@
 Introduction
 ============
 
+.. image:: https://coveralls.io/repos/github/materialsproject/pymatgen/badge.svg?branch=master
+
 Pymatgen (Python Materials Genomics) is a robust, open-source Python library
 for materials analysis. These are some of the main features:
 
@@ -62,7 +64,8 @@ several advantages over other codes out there:
    produces survives rigorous scrutiny every single day. Bugs tend to be
    found and corrected quickly. Pymatgen also uses
    `CircleCI <https://circleci.com>`_ for continuous integration, which ensures
-   that every commit passes a comprehensive suite of unittests.
+   that every commit passes a comprehensive suite of unittests. The coverage of
+   the unittests can be seen at `here <coverage/index.html>`_.
 2. **It is well documented.** A fairly comprehensive documentation has been
    written to help you get to grips with it quickly.
 3. **It is open.** You are free to use and contribute to pymatgen. It also means
