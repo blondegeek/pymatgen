@@ -1463,9 +1463,10 @@ class Outcar(MSONable):
             self.read_lepsilon()
             self.read_lepsilon_ionic()
 
+        # Check to see if LCALCPOL is true and read polarization data if so
         self.lcalcpol = False
         self.read_pattern({'calcpol': 'LCALCPOL   =     T'})
-        if self.data.get('epsilon',[]):
+        if self.data.get('calcpol',[]):
             self.lcalcpol = True
             self.read_lcalcpol()
 
@@ -2046,7 +2047,7 @@ class Outcar(MSONable):
             micro_pyawk(self.filename, search, self)
 
         except:
-            raise Exception("CLACLCPOL OUTCAR could not be parsed.")
+            raise Exception("LCALCPOL OUTCAR could not be parsed.")
 
     def read_core_state_eigen(self):
         """
