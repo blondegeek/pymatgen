@@ -459,7 +459,6 @@ class MPStaticSet(MPRelaxSet):
         self.kwargs = kwargs
         self.lepsilon = lepsilon
         self.lcalcpol = lcalcpol
-        self.parent_vis = MPVaspInputSet(**self.kwargs)
 
     @property
     def incar(self):
