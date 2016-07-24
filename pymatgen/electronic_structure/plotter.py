@@ -1030,93 +1030,71 @@ class BSPlotterProjected(BSPlotter):
             e_min = -10
             e_max = 10
         count = 1
+        spin = [Spin.up]
 
-        for d in range(len(data['distances'])):
-            for i in range(self._nb_bands):
-                # Get band interpolation
-                tck = scint.splrep(
-                    data['distances'][d],
-                    [data['energy'][d][str(Spin.up)][i][j]
-                     for j in range(len(data['distances'][d]))],s=sm)
-                step = (data['distances'][d][-1]
-                        - data['distances'][d][0]) / increment
-                        
-                # Get color interpolation.
-                # Get interpolation for each orbital for current band
-                groupInter = []
-                for g in groups:
-                    x = data['distances'][d]
-                    y = np.array([0.0]*len(data['distances'][d]))
-                    for el in g['elements']:
-                        if 'orbitals' not in g:
-                            for o in ['s','p','d']:
-                                y_new = np.array([proj[d][str(Spin.up)][i][j][el][o]
-                                         for j in range(len(data['distances'][d]))])
-                                y = y + y_new
-                    tck_o = scint.splrep(x,y,s=sm)
-                    groupInter.append(tck_o)
+        # plot for both Spin.up and Spin.down for spin polarized case
+        if self._bs.is_spin_polarized:
+            spin.append(Spin.down)
 
-                # NOW THE FANCY PART WHERE ALL ZE INTERPOLATIONS ARE USED
-                # to plot the current band i
-                
-                # Definition that uses several globals to get projections
-                def sumProj(k):
-                    ind_tot = [scint.splev(k * step + data['distances'][d][0],
-                                           gint, der=0)
-                               for gint in groupInter]
-                    tot = sum(ind_tot)
-                    return tot,ind_tot
-                
-                xs = [x * step + data['distances'][d][0] 
-                      for x in range(increment)]
+        for s in spin:
+            for d in range(len(data['distances'])):
+                for i in range(self._nb_bands):
+                    # Get band interpolation
+                    tck = scint.splrep(
+                        data['distances'][d],
+                        [data['energy'][d][str(s)][i][j]
+                         for j in range(len(data['distances'][d]))],s=sm)
 
-                cs = [] 
+                    step = (data['distances'][d][-1]
+                            - data['distances'][d][0]) / increment
 
-                for x in range(increment):
-                    tot, ind_tot = sumProj(x)
-                    ind_tot = np.array(ind_tot)/np.linalg.norm(ind_tot)
-                    color = np.array([0.0]*3)
-                    for i,g in enumerate(groups):
-                        color += ind_tot[i]*np.array(g['color'])/255.0
-                    color = [ min(abs(m),1) for m in color ]
-                    #print(color)
-                    cs.append(color)
+                    # Get color interpolation.
+                    # Get interpolation for each orbital for current band
+                    groupInter = []
+                    for g in groups:
+                        x = data['distances'][d]
+                        y = np.array([0.0]*len(data['distances'][d]))
+                        y_down = np.array([0.0]*len(data['distances'][d]))
+                        for el in g['elements']:
+                            if 'orbitals' not in g:
+                                for o in ['s','p','d']:
+                                    y_new = np.array([proj[d][str(s)][i][j][el][o]
+                                             for j in range(len(data['distances'][d]))])
+                                    y = y + y_new
+                        tck_o = scint.splrep(x,y,s=sm)
+                        groupInter.append(tck_o)
 
-                ys = [scint.splev(x * step + data['distances'][d][0],
-                                  tck, der=0)
-                      for x in range(increment)]
+                    # NOW THE FANCY PART WHERE ALL ZE INTERPOLATIONS ARE USED
+                    # to plot the current band i
 
-                plt.scatter(xs,ys,c=cs,marker="o",edgecolors='none')
+                    # Definition that uses several globals to get projections
+                    def sumProj(k):
+                        ind_tot = [scint.splev(k * step + data['distances'][d][0],
+                                               gint, der=0)
+                                   for gint in groupInter]
+                        tot = sum(ind_tot)
+                        return tot,ind_tot
 
-# TEST NON SPIN POLARIZED CASE FIRST
+                    xs = [x * step + data['distances'][d][0]
+                          for x in range(increment)]
 
-#                if self._bs.is_spin_polarized:
-#                    # handle spin polarized case
-#                    tck = scint.splrep(
-#                        data['distances'][d],
-#                        [data['energy'][d][str(Spin.down)][i][j]
-#                         for j in range(len(data['distances'][d]))])
-#                    step = (data['distances'][d][-1]
-#                            - data['distances'][d][0]) / 1000
-#                    # Get interpolation for each orbital for current band
-#                    orbInter = []
-#                    for el in dictio:
-#                        for o in dictio[el]:
-#                            tck_o = scint.splrep(
-#                                data['distances'][d],
-#                                [proj[d][str(Spin.down)][i][j] 
-#                                 for j in range(len(data['distances'][d]))]
-#                            )
-#                            orbInter.append(tck_o)
-#
-#
-#                    plt.plot([x * step + data['distances'][d][0]
-#                              for x in range(1000)],
-#                             [scint.splev(
-#                                 x * step + data['distances'][d][0],
-#                                 tck, der=0)
-#                              for x in range(1000)], 'r--',
-#                             linewidth=band_linewidth)
+                    cs = []
+
+                    for x in range(increment):
+                        tot, ind_tot = sumProj(x)
+                        ind_tot = np.array(ind_tot)/np.linalg.norm(ind_tot)
+                        color = np.array([0.0]*3)
+                        for i,g in enumerate(groups):
+                            color += ind_tot[i]*np.array(g['color'])/255.0
+                        color = [ min(abs(m),1) for m in color ]
+                        #print(color)
+                        cs.append(color)
+
+                    ys = [scint.splev(x * step + data['distances'][d][0],
+                                      tck, der=0)
+                          for x in range(increment)]
+
+                    plt.scatter(xs,ys,c=cs,marker="o",edgecolors='none')
 
         self._maketicks(plt)
 
