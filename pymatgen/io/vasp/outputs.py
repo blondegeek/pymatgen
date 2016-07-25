@@ -2025,15 +2025,15 @@ class Outcar(MSONable):
             search = []
 
             # Always present spin/non-spin
-            def p_elc(results, match):
-                results.p_elc = np.array([float(match.group(1)),
+            def p_elec(results, match):
+                results.p_elec = np.array([float(match.group(1)),
                                           float(match.group(2)),
                                           float(match.group(3))])
 
             search.append(["^.*Total electronic dipole moment: "
                            "*p\[elc\]=\( *([-0-9.Ee+]*) *([-0-9.Ee+]*) "
                            "*([-0-9.Ee+]*) *\)",
-                           None, p_elc])
+                           None, p_elec])
 
             def p_ion(results, match):
                 results.p_ion = np.array([float(match.group(1)),
