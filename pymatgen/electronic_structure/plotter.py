@@ -708,11 +708,11 @@ class BSPlotterProjected(BSPlotter):
                              " on a band structure without any")
         super(BSPlotterProjected, self).__init__(bs)
 
-    def _get_projections_by_branches(self, dictio,kpoint_offset=0):
+    def _get_projections_by_branches(self,dictio,kpoint_offset=0):
         proj = self._bs.get_projections_on_elts_and_orbitals(dictio,kpoint_offset=kpoint_offset)
         proj_br = []
-        print(len(proj[Spin.up]))
-        print(len(proj[Spin.up][0]))
+#        print(len(proj[Spin.up]))
+#        print(len(proj[Spin.up][0]))
 #        for c in proj[Spin.up][0]:
 #            print(c)
         for b in self._bs._branches:
@@ -741,6 +741,36 @@ class BSPlotterProjected(BSPlotter):
                                      for o in proj[Spin.down][i][j][e]}
                                  for e in proj[Spin.down][i][j]})
         return proj_br
+
+    def _get_site_projections_by_branches(self):
+        proj = self._bs.get_projection_on_sites()
+        proj_br = []
+
+        for b in self._bs._branches:
+            #            print(b)
+            if self._bs.is_spin_polarized:
+                proj_br.append(
+                    {str(Spin.up): [[] for l in range(self._nb_bands)],
+                     str(Spin.down): [[] for l in range(self._nb_bands)]})
+            else:
+                proj_br.append(
+                    {str(Spin.up): [[] for l in range(self._nb_bands)]})
+            print((len(proj_br[-1][str(Spin.up)]), self._nb_bands))
+
+            for i in range(self._nb_bands):
+                for j in range(b['start_index'], b['end_index'] + 1):
+                    proj_br[-1][str(Spin.up)][i].append(
+                        {s: proj[Spin.up][i][j][s]
+                         for s in proj[Spin.up][i][j]})
+            if self._bs.is_spin_polarized:
+                for b in self._bs._branches:
+                    for i in range(self._nb_bands):
+                        for j in range(b['start_index'], b['end_index'] + 1):
+                            proj_br[-1][str(Spin.down)][i].append(
+                                {s: proj[Spin.down][i][j][s]
+                                 for s in proj[Spin.down][i][j]})
+        return proj_br
+
 
     def get_projected_plots_dots(self, dictio, zero_to_efermi=True, ylim=None,
                                  vbm_cbm_marker=False):
@@ -1054,7 +1084,6 @@ class BSPlotterProjected(BSPlotter):
                     for g in groups:
                         x = data['distances'][d]
                         y = np.array([0.0]*len(data['distances'][d]))
-                        y_down = np.array([0.0]*len(data['distances'][d]))
                         for el in g['elements']:
                             if 'orbitals' not in g:
                                 for o in ['s','p','d']:
@@ -1138,6 +1167,135 @@ class BSPlotterProjected(BSPlotter):
         else:
             plt.ylim(ylim)
         
+        plt.tight_layout()
+
+        return plt
+
+    def get_color_sites(self,sites,zero_to_efermi=True,ylim=None,
+                          vbm_cbm_marker=False,sm=0,plt=None,kpoint_offset=0,width=12,height=8):
+        from pymatgen.util.plotting_utils import get_publication_quality_plot
+        from matplotlib import rc
+        import scipy.interpolate as scint
+
+        increment = 100
+
+        rc('text', usetex=True)
+
+        band_linewidth = 1.0
+
+        proj = self._get_site_projections_by_branches()
+
+        data = self.bs_plot_data(zero_to_efermi)
+        if plt == None:
+            plt = get_publication_quality_plot(width, height, plt=plt)
+        #plt = get_publication_quality_plot(12, 8)
+        e_min = -4
+        e_max = 4
+        if self._bs.is_metal():
+            e_min = -10
+            e_max = 10
+        count = 1
+        spin = [Spin.up]
+
+        # plot for both Spin.up and Spin.down for spin polarized case
+        if self._bs.is_spin_polarized:
+            spin.append(Spin.down)
+
+        for s in spin:
+            for d in range(len(data['distances'])):
+                for i in range(self._nb_bands):
+                    # Get band interpolation
+                    tck = scint.splrep(
+                        data['distances'][d],
+                        [data['energy'][d][str(s)][i][j]
+                         for j in range(len(data['distances'][d]))], s=sm)
+
+                    step = (data['distances'][d][-1]
+                            - data['distances'][d][0]) / increment
+
+                    # Get color interpolation.
+                    # Get interpolation for each orbital for current band
+                    sitesInter = []
+                    for site in sites:
+                        x = data['distances'][d]
+                        # currently not sure why this can't just be y = proj[d][str(s)][i][j][site['sites']] -- might be an hse thing
+                        y = np.array([proj[d][str(s)][i][j][site] for j in range(len(data['distances'][d]))])
+                        tck_o = scint.splrep(x, y, s=sm)
+                        sitesInter.append(tck_o)
+
+                    # NOW THE FANCY PART WHERE ALL ZE INTERPOLATIONS ARE USED
+                    # to plot the current band i
+
+                    # Definition that uses several globals to get projections
+                    def sumProj(k):
+                        ind_tot = [scint.splev(k * step + data['distances'][d][0],
+                                               sint, der=0)
+                                   for sint in sitesInter]
+                        tot = sum(ind_tot)
+                        return tot, ind_tot
+
+                    xs = [x * step + data['distances'][d][0]
+                          for x in range(increment)]
+
+                    cs = []
+
+                    for x in range(increment):
+                        tot, ind_tot = sumProj(x)
+                        ind_tot = np.array(ind_tot) / np.linalg.norm(ind_tot)
+                        color = np.array([0.0] * 3)
+                        for i, site in enumerate(sites):
+                            color += ind_tot[i] * np.array(sites[site]) / 255.0
+                        color = [min(abs(m), 1) for m in color]
+                        cs.append(color)
+
+                    ys = [scint.splev(x * step + data['distances'][d][0],
+                                      tck, der=0)
+                          for x in range(increment)]
+
+                    plt.scatter(xs, ys, c=cs, marker="o", edgecolors='none')
+
+        self._maketicks(plt)
+
+        # Main X and Y Labels
+        plt.xlabel(r'$\mathrm{Wave\ Vector}$', fontsize=30)
+        ylabel = r'$\mathrm{E\ -\ E_f\ (eV)}$' if zero_to_efermi \
+            else r'$\mathrm{Energy\ (eV)}$'
+        plt.ylabel(ylabel, fontsize=30)
+
+        # Draw Fermi energy, only if not the zero
+        if not zero_to_efermi:
+            ef = self._bs.efermi
+            plt.axhline(ef, linewidth=2, color='k')
+
+        # X range (K)
+        # last distance point
+        x_max = data['distances'][-1][-1]
+        plt.xlim(0, x_max)
+
+        if ylim is None:
+            if self._bs.is_metal():
+                if zero_to_efermi:
+                    plt.ylim(e_min, e_max)
+                else:
+                    plt.ylim(self._bs.efermi + e_min, self._bs._efermi
+                             + e_max)
+            else:
+                if vbm_cbm_marker:
+                    for cbm in data['cbm']:
+                        plt.scatter(cbm[0], cbm[1], color='r',
+                                    marker='o',
+                                    s=100)
+
+                    for vbm in data['vbm']:
+                        plt.scatter(vbm[0], vbm[1], color='g',
+                                    marker='o',
+                                    s=100)
+
+                plt.ylim(data['vbm'][0][1] + e_min, data['cbm'][0][1]
+                         + e_max)
+        else:
+            plt.ylim(ylim)
+
         plt.tight_layout()
 
         return plt

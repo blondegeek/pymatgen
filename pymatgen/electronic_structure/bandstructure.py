@@ -288,6 +288,26 @@ class BandStructure(object):
                         self._projections[spin][i][j][orb][k]
         return result
 
+    def get_projection_on_sites(self):
+        if len(self._projections) == 0:
+            return {}
+        if self.is_spin_polarized:
+            result = {Spin.up: [], Spin.down: []}
+        else:
+            result = {Spin.up: []}
+        structure = self._structure
+        for spin in result:
+            result[spin] = [[collections.defaultdict(float)
+                             for i in range(len(self._kpoints))]
+                            for j in range(self._nb_bands)]
+            for i, j, k in itertools.product(list(range(self._nb_bands)),
+                                             list(range(len(self._kpoints))),
+                                             list(range(structure.num_sites))):
+                for orb in self._projections[Spin.up][i][j]:
+                    result[spin][i][j][k] += \
+                        self._projections[spin][i][j][orb][k]
+        return result
+
     def get_projections_on_elts_and_orbitals(self, dictio, kpoint_offset=0):
         """
         Method returning a dictionary of projections on elements and specific
