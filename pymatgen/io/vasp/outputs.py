@@ -614,6 +614,10 @@ class Vasprun(MSONable):
         """
         return self.parameters.get("ISPIN", 1) == 2
 
+    @property
+    def is_soc(self):
+        return self.parameters.get("LSORBIT",False) == True
+
     def get_computed_entry(self, inc_structure=False, parameters=None,
                            data=None):
         """
@@ -1238,7 +1242,8 @@ class BSVasprun(Vasprun):
                             peigen[i][spin].append({})
                 for (spin, kpoint_index, band_index, ion_index, orbital), \
                         value in self.projected_eigenvalues.items():
-                    beigen = peigen[kpoint_index][str(spin)][band_index]
+                    if str(spin) in peigen[kpoint_index].keys():
+                        beigen = peigen[kpoint_index][str(spin)][band_index]
                     if orbital not in beigen:
                         beigen[orbital] = [0.0] * nsites
                     beigen[orbital][ion_index] = value

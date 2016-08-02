@@ -1088,7 +1088,7 @@ class BSPlotterProjected(BSPlotter):
                             if 'orbitals' not in g:
                                 for o in ['s','p','d']:
                                     y_new = np.array([proj[d][str(s)][i][j][el][o]
-                                             for j in range(len(data['distances'][d]))])
+                                                      for j in range(len(data['distances'][d]))])
                                     y = y + y_new
                         tck_o = scint.splrep(x,y,s=sm)
                         groupInter.append(tck_o)
@@ -1173,6 +1173,19 @@ class BSPlotterProjected(BSPlotter):
 
     def get_color_sites(self,sites,zero_to_efermi=True,ylim=None,
                           vbm_cbm_marker=False,sm=0,plt=None,kpoint_offset=0,width=12,height=8):
+        """
+
+        :param sites: given as a dict { int : [r,g,b], int : [r,g,b]}
+        :param zero_to_efermi:
+        :param ylim:
+        :param vbm_cbm_marker:
+        :param sm:
+        :param plt:
+        :param kpoint_offset:
+        :param width:
+        :param height:
+        :return:
+        """
         from pymatgen.util.plotting_utils import get_publication_quality_plot
         from matplotlib import rc
         import scipy.interpolate as scint
