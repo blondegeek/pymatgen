@@ -92,6 +92,11 @@ class PolarizationChange(object):
 
         return shifted_p_elec_T.T, shifted_p_ion_T.T
 
+    def get_polarization_change(self):
+        shifted_p_elec, shifted_p_ion = self.get_same_branch_polarization_data(convert_to_muC_per_cm2=True)
+        shifted_total = shifted_p_elec + shifted_p_ion
+        return shifted_total[-1]-shifted_total[0]
+
 def shift(compare, value, interval):
     """
     Given two numbers 'compare' and 'value' figure out how many
