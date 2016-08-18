@@ -58,7 +58,7 @@ class PolarizationChange(object):
 
         return p_elecs,p_ions
 
-    def get_same_branch_polarization_data(self, convert_to_muC_per_cm2=False):
+    def get_same_branch_polarization_data(self, convert_to_muC_per_cm2=False, half_quantum=False):
 
         p_elecs, p_ions = self.get_pelecs_and_pions()
 
@@ -70,16 +70,25 @@ class PolarizationChange(object):
                                 s.lattice.c]
                                for s in self.structures])
         intervals_T = intervals.T
+ #       intervals_T = intervals.T*0.5
 
         shifted_p_elec_T = []
         shifted_p_ion_T = []
+        shifted_total_T = []
 
         for i in range(3):
-            shifted_p_elec_T.append(shiftList(p_elecs_T[i].tolist()[0],intervals = intervals_T[i].tolist()[0]))
-            shifted_p_ion_T.append(shiftList(p_ions_T[i].tolist()[0],intervals = intervals_T[i].tolist()[0]))
+            if half_quantum == True:
+                # this should either be plus OR minus half a quantum
+                start = intervals_T[i].tolist()[0][0]
+            else:
+                start = 0.0
+            shifted_p_elec_T.append(shiftList(p_elecs_T[i].tolist()[0],start=start,intervals = intervals_T[i].tolist()[0]))
+            shifted_p_ion_T.append(shiftList(p_ions_T[i].tolist()[0],start=start,intervals = intervals_T[i].tolist()[0]))
+            shifted_total_T.append(shiftList((p_ions_T[i]+p_elecs_T[i]).tolist()[0],start=start,intervals = intervals_T[i].tolist()[0]))
 
         shifted_p_elec_T = np.matrix(shifted_p_elec_T)
         shifted_p_ion_T = np.matrix(shifted_p_ion_T)
+        shifted_total_T = np.matrix(shifted_total_T)
 
         if convert_to_muC_per_cm2:
             volumes = [s.lattice.volume for s in self.structures]
@@ -89,12 +98,12 @@ class PolarizationChange(object):
                 for j in range(shifted_p_elec_T.shape[1]):
                     shifted_p_elec_T[i,j] = shifted_p_elec_T[i,j]/volumes[i]*(e_to_muC*cm2_to_A2)
                     shifted_p_ion_T[i,j] = shifted_p_ion_T[i,j]/volumes[i]*(e_to_muC*cm2_to_A2)
+                    shifted_total_T[i,j] = shifted_total_T[i,j]/volumes[i]*(e_to_muC*cm2_to_A2)
 
-        return shifted_p_elec_T.T, shifted_p_ion_T.T
+        return shifted_p_elec_T.T, shifted_p_ion_T.T, shifted_total_T.T
 
     def get_polarization_change(self):
-        shifted_p_elec, shifted_p_ion = self.get_same_branch_polarization_data(convert_to_muC_per_cm2=True)
-        shifted_total = shifted_p_elec + shifted_p_ion
+        shifted_p_elec, shifted_p_ion, shifted_total = self.get_same_branch_polarization_data(convert_to_muC_per_cm2=True)
         return shifted_total[-1]-shifted_total[0]
 
 def shift(compare, value, interval):
@@ -106,11 +115,10 @@ def shift(compare, value, interval):
     value (float) -- number to add or subtract an interger number of intervals
     interval (float) -- number of interval jumps
     """
-    n = (compare - value) / interval
-    if abs(compare - (value + float(floor(n)) * interval)) > abs(compare - (value + float(ceil(n)) * interval)):
-        return value + float(ceil(n)) * interval
-    else:
-        return value + float(floor(n)) * interval
+
+    n = (float(compare)-float(value))/ float(interval)
+    return value + round(n)*interval
+
 
 def shiftList(shiftlist, start=0.0, intervals=1):
     """
@@ -121,7 +129,8 @@ def shiftList(shiftlist, start=0.0, intervals=1):
     interval (list of floats or float) -- quantized spacing between points
     """
     if type(intervals) == float or type(intervals) == int:
-        interval = [intervals for i in range(len(shiftlist))]
+        intervals = [intervals for i in range(len(shiftlist))]
+
     new = []
     prev = start
     for i, j in enumerate(shiftlist):
