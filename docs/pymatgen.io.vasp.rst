@@ -6,6 +6,7 @@ Subpackages
 
 .. toctree::
 
+    pymatgen.io.vasp.tests
 
 Submodules
 ----------
@@ -38,14 +39,6 @@ pymatgen.io.vasp.sets module
 ----------------------------
 
 .. automodule:: pymatgen.io.vasp.sets
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pymatgen.io.vasp.sets_deprecated module
----------------------------------------
-
-.. automodule:: pymatgen.io.vasp.sets_deprecated
     :members:
     :undoc-members:
     :show-inheritance:
