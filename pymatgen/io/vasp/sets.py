@@ -1310,7 +1310,7 @@ def get_structure_from_prev_run(vasprun, outcar=None, sym_prec=0.1,
     # ldau
     if vasprun.parameters.get("LDAU", False):
         for k in ("LDAUU", "LDAUJ", "LDAUL"):
-            vals = vasprun.incar[k]
+            vals = deepcopy(vasprun.incar[k])
             m = {}
             l = []
             m[structure[0].specie.symbol] = vals.pop(0)
