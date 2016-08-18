@@ -535,17 +535,6 @@ class IStructure(SiteCollection, MSONable):
         return cls(latt, all_sp, all_coords,
                    site_properties=all_site_properties)
 
-    @classmethod
-    @deprecated(message="from_abivars has been merged with the from_dict "
-                        "method. Use from_dict(fmt=\"abivars\"). from_abivars "
-                        "will be removed in pymatgen 4.0.")
-    def from_abivars(cls, d, **kwargs):
-        """
-        Build a :class:`Structure` object from a dictionary with ABINIT
-        variables.
-        """
-        return cls.from_dict(d, fmt="abivars", **kwargs)
-
     @property
     def distance_matrix(self):
         """
@@ -982,14 +971,7 @@ class IStructure(SiteCollection, MSONable):
         if len(self) != len(end_structure):
             raise ValueError("Structures have different lengths!")
 
-        if interpolate_lattices:
-            # interpolate lattices
-            lstart = np.array(self.lattice.lengths_and_angles)
-            lend = np.array(end_structure.lattice.lengths_and_angles)
-            lvec = lend - lstart
-
-        # Check that both structures have the same lattice
-        elif not self.lattice == end_structure.lattice:
+        if not (interpolate_lattices or self.lattice == end_structure.lattice):
             raise ValueError("Structures with different lattices!")
 
         # Check that both structures have the same species
@@ -1041,10 +1023,20 @@ class IStructure(SiteCollection, MSONable):
             vec -= np.round(vec)
         sp = self.species_and_occu
         structs = []
+
+        if interpolate_lattices:
+            # interpolate lattice matrices using polar decomposition
+            from scipy.linalg import polar
+            # u is unitary (rotation), p is stretch
+            u, p = polar(np.dot(end_structure.lattice.matrix.T,
+                                np.linalg.inv(self.lattice.matrix.T)))
+            lvec = p - np.identity(3)
+            lstart = self.lattice.matrix.T
+
         for x in range(nimages + 1):
             if interpolate_lattices:
-                l_a = lstart + x / nimages * lvec
-                l = Lattice.from_lengths_and_angles(*l_a)
+                l_a = np.dot(np.identity(3) + x / nimages * lvec, lstart).T
+                l = Lattice(l_a)
             else:
                 l = self.lattice
             fcoords = start_coords + x / nimages * vec
@@ -1266,51 +1258,8 @@ class IStructure(SiteCollection, MSONable):
         """
         if fmt == "abivars":
             """Returns a dictionary with the ABINIT variables."""
-            types_of_specie = self.types_of_specie
-            natom = self.num_sites
-
-            znucl_type = [specie.number for specie in types_of_specie]
-
-            typat = np.zeros(natom, np.int)
-            for (atm_idx, site) in enumerate(self):
-                typat[atm_idx] = types_of_specie.index(site.specie) + 1
-
-            rprim = ArrayWithUnit(self.lattice.matrix, "ang").to("bohr")
-            xred = np.reshape([site.frac_coords for site in self], (-1, 3))
-
-            # Set small values to zero. This usually happens when the CIF file
-            # does not give structure parameters with enough digits.
-            rprim = np.where(np.abs(rprim) > 1e-8, rprim, 0.0)
-            xred = np.where(np.abs(xred) > 1e-8, xred, 0.0)
-
-            # Info on atoms.
-            d = dict(
-                natom=natom,
-                ntypat=len(types_of_specie),
-                typat=typat,
-                znucl=znucl_type,
-                xred=xred,
-            )
-
-            # Add info on the lattice.
-            # Should we use (rprim, acell) or (angdeg, acell) to specify the
-            # lattice?
-            geomode = kwargs.pop("geomode", "rprim")
-            # latt_dict = self.lattice.to_abivars(geomode=geomode)
-
-            if geomode == "rprim":
-                d.update(dict(
-                    acell=3 * [1.0],
-                    rprim=rprim))
-
-            elif geomode == "angdeg":
-                d.update(dict(
-                    acell=3 * [1.0],
-                    angdeg=angdeg))
-            else:
-                raise ValueError("Wrong value for geomode: %s" % geomode)
-
-            return d
+            from pymatgen.io.abinit.abiobjects import structure_to_abivars
+            return structure_to_abivars(self, **kwargs)
 
         latt_dict = self._lattice.as_dict(verbosity=verbosity)
         del latt_dict["@module"]
@@ -1328,7 +1277,7 @@ class IStructure(SiteCollection, MSONable):
         return d
 
     @classmethod
-    def from_dict(cls, d, fmt=None, **kwargs):
+    def from_dict(cls, d, fmt=None):
         """
         Reconstitute a Structure object from a dict representation of Structure
         created using as_dict().
@@ -1340,54 +1289,12 @@ class IStructure(SiteCollection, MSONable):
             Structure object
         """
         if fmt == "abivars":
-            kwargs.update(d)
-            d = kwargs
-
-            lattice = Lattice.from_dict(d, fmt="abivars")
-            coords, coords_are_cartesian = d.get("xred", None), False
-
-            if coords is None:
-                coords = d.get("xcart", None)
-                if coords is not None:
-                    coords = ArrayWithUnit(coords, "bohr").to("ang")
-                else:
-                    coords = d.get("xangst", None)
-                coords_are_cartesian = True
-
-            if coords is None:
-                raise ValueError(
-                    "Cannot extract atomic coordinates from dict %s"
-                    % str(d))
-
-            coords = np.reshape(coords, (-1, 3))
-
-            znucl_type, typat = d["znucl"], d["typat"]
-
-            if not isinstance(znucl_type, collections.Iterable):
-                znucl_type = [znucl_type]
-
-            if not isinstance(typat, collections.Iterable):
-                typat = [typat]
-
-            assert len(typat) == len(coords)
-
-            # Note Fortran --> C indexing
-            # znucl_type = np.rint(znucl_type)
-            species = [znucl_type[typ - 1] for typ in typat]
-
-            return cls(lattice, species, coords, validate_proximity=False,
-                       to_unit_cell=False,
-                       coords_are_cartesian=coords_are_cartesian)
+            from pymatgen.io.abinit.abiobjects import structure_from_abivars
+            return structure_from_abivars(cls=cls, **d)
 
         lattice = Lattice.from_dict(d["lattice"])
         sites = [PeriodicSite.from_dict(sd, lattice) for sd in d["sites"]]
         return cls.from_sites(sites)
-
-    @deprecated(message="to_abivars has been merged with the as_dict method. "
-                        "Use as_dict(fmt=\"abivars\"). to_abivars will be "
-                        "removed in pymatgen 4.0.")
-    def to_abivars(self, **kwargs):
-        return self.as_dict(verbosity=1, fmt="abivars", **kwargs)
 
     def to(self, fmt=None, filename=None, **kwargs):
         """
@@ -1416,7 +1323,7 @@ class IStructure(SiteCollection, MSONable):
 
         if fmt == "cif" or fnmatch(fname, "*.cif*"):
             writer = CifWriter(self)
-        elif fmt == "poscar" or fnmatch(fname, "POSCAR*"):
+        elif fmt == "poscar" or fnmatch(fname, "*POSCAR*"):
             writer = Poscar(self)
         elif fmt == "cssr" or fnmatch(fname.lower(), "*.cssr*"):
             writer = Cssr(self)
@@ -1536,7 +1443,7 @@ class IStructure(SiteCollection, MSONable):
             return cls.from_str(contents, fmt="cif",
                                 primitive=primitive, sort=sort,
                                 merge_tol=merge_tol)
-        elif fnmatch(fname, "POSCAR*") or fnmatch(fname, "CONTCAR*"):
+        elif fnmatch(fname, "*POSCAR*") or fnmatch(fname, "*CONTCAR*"):
             s = cls.from_str(contents, fmt="poscar",
                              primitive=primitive, sort=sort,
                              merge_tol=merge_tol)

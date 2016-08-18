@@ -167,15 +167,7 @@ class VaspInputSet(six.with_metaclass(abc.ABCMeta, MSONable)):
         d = MSONable.as_dict(self)
         if verbosity == 1:
             d.pop("structure", None)
-        if hasattr(self, "kwargs"):
-            d.update(**self.kwargs)
         return d
-
-    @classmethod
-    def from_dict(cls, d):
-        decoded = {k: MontyDecoder().process_decoded(v) for k, v in d.items()
-                   if not k.startswith("@")}
-        return cls(**decoded)
 
 
 class DictSet(VaspInputSet):
@@ -510,8 +502,8 @@ class MPStaticSet(MPRelaxSet):
 
     @property
     def kpoints(self):
+        self.config_dict["KPOINTS"]["reciprocal_density"] = self.reciprocal_density
         kpoints = super(MPStaticSet, self).kpoints
-
         # Prefer to use k-point scheme from previous run
         if self.prev_kpoints and self.prev_kpoints.style != kpoints.style:
             if self.prev_kpoints.style == Kpoints.supported_modes.Monkhorst:
@@ -1313,10 +1305,11 @@ def get_structure_from_prev_run(vasprun, outcar=None, sym_prec=0.1,
             vals = vasprun.incar[k]
             m = {}
             l = []
-            m[structure[0].specie.symbol] = vals.pop(0)
+            s = 0
             for site in structure:
                 if site.specie.symbol not in m:
-                    m[site.specie.symbol] = vals.pop(0)
+                    m[site.specie.symbol] = vals[s]
+                    s += 1
                 l.append(m[site.specie.symbol])
             if len(l) == len(structure):
                 site_properties.update({k.lower(): l})
