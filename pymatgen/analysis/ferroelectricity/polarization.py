@@ -119,7 +119,6 @@ def shift(compare, value, interval):
     n = (float(compare)-float(value))/ float(interval)
     return value + round(n)*interval
 
-
 def shiftList(shiftlist, start=0.0, intervals=1):
     """
     Given a list, shift it such that the points are closest to the preceeding point

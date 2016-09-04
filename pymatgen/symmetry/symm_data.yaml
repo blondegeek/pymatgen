@@ -2459,7 +2459,21 @@ space_group_encoding:
     order: 12
     patterson_symmetry: P-3m1
     point_group: -3m1
+  P-3c1H:
+    enc: 12nOOOeOOD0
+    full_symbol: P-32/c1
+    int_number: 165
+    order: 12
+    patterson_symmetry: P-3m1
+    point_group: -3m1
   P-3m1:
+    enc: 12nOOOeOOO0
+    full_symbol: P-32/m1
+    int_number: 164
+    order: 12
+    patterson_symmetry: P-3m1
+    point_group: -3m1
+  P-3m1H:
     enc: 12nOOOeOOO0
     full_symbol: P-32/m1
     int_number: 164
