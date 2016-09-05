@@ -390,6 +390,17 @@ class SpaceGroup(SymmetryGroup):
         """
         return subgroup.is_subgroup(self)
 
+    def is_polar(self):
+        """
+        Returns True if self.point_group is polar.
+
+        """
+        polar_point_groups = ['1','2','m','mm2','4','4mm','3','3m','6','6mm']
+        if self.point_group in polar_point_groups:
+            return True
+        else:
+            return False
+
     @classmethod
     def from_int_number(cls, int_number, hexagonal=True):
         """
