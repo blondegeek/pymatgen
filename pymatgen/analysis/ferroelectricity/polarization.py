@@ -69,8 +69,9 @@ class PolarizationChange(object):
                                 s.lattice.b,
                                 s.lattice.c]
                                for s in self.structures])
-        intervals_T = intervals.T
- #       intervals_T = intervals.T*0.5
+ #       intervals_T = intervals.T
+        #This seems to perform better... But theory wise, it should probably the former line.
+        intervals_T = intervals.T*0.5
 
         shifted_p_elec_T = []
         shifted_p_ion_T = []
@@ -79,7 +80,8 @@ class PolarizationChange(object):
         for i in range(3):
             if half_quantum == True:
                 # this should either be plus OR minus half a quantum
-                start = intervals_T[i].tolist()[0][0]
+                start = float(intervals_T[i].tolist()[0][0])/2
+#                start = -float(intervals_T[i].tolist()[0][0])/2
             else:
                 start = 0.0
             shifted_p_elec_T.append(shiftList(p_elecs_T[i].tolist()[0],start=start,intervals = intervals_T[i].tolist()[0]))
