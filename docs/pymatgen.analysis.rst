@@ -50,6 +50,14 @@ pymatgen.analysis.eos module
     :undoc-members:
     :show-inheritance:
 
+pymatgen.analysis.eos_2 module
+------------------------------
+
+.. automodule:: pymatgen.analysis.eos_2
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 pymatgen.analysis.ewald module
 ------------------------------
 
@@ -78,6 +86,14 @@ pymatgen.analysis.nmr module
 ----------------------------
 
 .. automodule:: pymatgen.analysis.nmr
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+pymatgen.analysis.path_finder module
+------------------------------------
+
+.. automodule:: pymatgen.analysis.path_finder
     :members:
     :undoc-members:
     :show-inheritance:

@@ -1,12 +1,47 @@
 Change log
 ==========
 
+v4.3.2
+------
+* Massive speedup of Bandstructure, especially projected band structures,
+  parsing.
+* Massive update to pmg cli script, with new query functions as well as a
+  more rational command structure.
+* Updates to ChemEnv.
+* Misc bug fixes.
+
+v4.3.1
+------
+* Upgrade monty and spglib requirements for bug fixes.
+* Updates to feff support (Kiran).
+
+v4.3.0
+------
+* Massive update to elastic module. (Joey Montaya)
+* Pathfinder algorithm for NEB calculations. (Ziqing Rong)
+* Wheels for Windows and Mac Py27 and Py35.
+
+v4.2.5
+------
+* Bug fix for BSPlotter.
+
+v4.2.4
+------
+* Bug fix for kpoint weight calculation for Monkhorst meshes.
+
+v4.2.3
+------
+* Minor cleanup.
+* Simplified installation. enumlib and bader can now be installed using pmg setup --install.
+
 v4.2.2
 ------
 * Global configuration variables such as VASP\_PSP\_DIR and MAPI\_KEY are now
   stored in "~/.pmgrc.yaml". If you are setting these as environmental
-  variables right now, you can easily transition to the new system using
-  "pmg config --add VASP\_PSP\_DIR $VASP\_PSP\_DIR MAPI\_KEY $MAPI\_KEY".
+  variables right now, you can easily transition to the new system using::
+
+      pmg config --add VASP_PSP_DIR $VASP_PSP_DIR MAPI_KEY $MAPI_KEY
+
   This new scheme will provide greater flexibility for user-defined
   global behavior in pymatgen, e.g., tolerances, default input sets for
   transmuters, etc., in future.
