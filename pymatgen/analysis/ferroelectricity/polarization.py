@@ -8,6 +8,7 @@ from __future__ import absolute_import
 from math import *
 from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.outputs import Outcar
+from pymatgen.core.sites import PeriodicSite
 import numpy as np
 
 """
@@ -72,37 +73,71 @@ class PolarizationChange(object):
 
         p_elecs, p_ions = self.get_pelecs_and_pions(convert_to_muC_per_cm2=False)
 
+        L = len(p_elecs)
+
         p_tot = p_elecs + p_ions
 
-        intervals = np.matrix([[s.lattice.a,
-                                s.lattice.b,
-                                s.lattice.c]
-                               for s in self.structures])
+        # Assuming primitive cells do not rotate xyz coords
+        primitives = [s.get_primitive_structure() for s in self.structures]
 
-        # This should be 1 if I have the theory right, but 0.5 seems to work better.
-        # I'm likely missing something important.
-        intervals *= 0.5
+        shifted_p_elec = []
+        shifted_p_ion = []
+        for i in range(L):
+            p_e = np.matrix(p_elecs[i]).T
+            p_i = np.matrix(p_ions[i]).T
+            sm = np.matrix(self.structures[i].lattice.matrix)
+            sm /= np.linalg.norm(sm,axis=1)
+            p_e_cart = (sm * p_e).T.tolist()[0]
+            p_i_cart = (sm * p_i).T.tolist()[0]
 
-        volumes = np.matrix([s.lattice.volume for s in self.structures])
+            p_e_prim = PeriodicSite("C", p_e_cart, primitives[i].lattice,
+                                    coords_are_cartesian=True).to_unit_cell.coords
+            p_i_prim = PeriodicSite("C", p_i_cart, primitives[i].lattice,
+                                    coords_are_cartesian=True).to_unit_cell.coords
 
-        shifted_p_elec_T = [shiftList(
-            p_elecs.T[i].tolist()[0],
-            start=0.0,
-            intervals=intervals.T[i].tolist()[0]) for i in range(3)]
+            p_e_final = (sm.I * (np.matrix(p_i_prim).T)).T.tolist()[0]
+            p_i_final = (sm.I * (np.matrix(p_e_prim).T)).T.tolist()[0]
 
-        shifted_p_ion_T = [shiftList(
-            p_ions.T[i].tolist()[0],
-            start=0.0,
-            intervals=intervals.T[i].tolist()[0]) for i in range(3)]
+            shifted_p_elec.append(p_e_final)
+            shifted_p_ion.append(p_i_final)
 
-        shifted_p_tot_T = [shiftList(
-            p_tot.T[i].tolist()[0],
-            start=0.0,
-            intervals=intervals.T[i].tolist()[0]) for i in range(3)]
+        shifted_p_elec_T = np.matrix(shifted_p_elec).T
+        shifted_p_ion_T = np.matrix(shifted_p_ion).T
 
-        shifted_p_elec_T = np.matrix(shifted_p_elec_T)
-        shifted_p_ion_T = np.matrix(shifted_p_ion_T)
-        shifted_p_tot_T = np.matrix(shifted_p_tot_T)
+        volumes = np.matrix([s.get_primitive_structure().lattice.volume for s in self.structures])
+
+        # intervals = np.matrix([[s.lattice.a,
+        #                         s.lattice.b,
+        #                         s.lattice.c]
+        #                        for s in self.structures])
+        #
+        #
+        #
+        # # This should be 1 if I have the theory right, but 0.5 seems to work better.
+        # # I'm likely missing something important.
+        # intervals *= 1
+        #
+        # #volumes = np.matrix([s.lattice.volume for s in self.structures])
+        #
+        #
+        # shifted_p_elec_T = [shiftList(
+        #     p_elecs.T[i].tolist()[0],
+        #     start=0.0,
+        #     intervals=intervals.T[i].tolist()[0]) for i in range(3)]
+        #
+        # shifted_p_ion_T = [shiftList(
+        #     p_ions.T[i].tolist()[0],
+        #     start=0.0,
+        #     intervals=intervals.T[i].tolist()[0]) for i in range(3)]
+        #
+        # shifted_p_tot_T = [shiftList(
+        #     p_tot.T[i].tolist()[0],
+        #     start=0.0,
+        #     intervals=intervals.T[i].tolist()[0]) for i in range(3)]
+        #
+        # shifted_p_elec_T = np.matrix(shifted_p_elec_T)
+        # shifted_p_ion_T = np.matrix(shifted_p_ion_T)
+        # shifted_p_tot_T = np.matrix(shifted_p_tot_T)
 
         if convert_to_muC_per_cm2:
             e_to_muC = -1.6021766e-13
@@ -112,14 +147,14 @@ class PolarizationChange(object):
 
             shifted_p_elec_T = np.multiply(units, shifted_p_elec_T)
             shifted_p_ion_T = np.multiply(units, shifted_p_ion_T)
-            shifted_p_tot_T = np.multiply(units, shifted_p_tot_T)
+            #shifted_p_tot_T = np.multiply(units, shifted_p_tot_T)
 
         # Shift so everything starts at zero
         shifted_p_elec_T -= shifted_p_elec_T[:, 0]
         shifted_p_ion_T -= shifted_p_ion_T[:, 0]
-        shifted_p_tot_T -= shifted_p_tot_T[:, 0]
+        #shifted_p_tot_T -= shifted_p_tot_T[:, 0]
 
-        return shifted_p_elec_T.T, shifted_p_ion_T.T, shifted_p_tot_T.T
+        return shifted_p_elec_T.T, shifted_p_ion_T.T, None
 
     def get_polarization_change(self):
         shifted_p_elec, shifted_p_ion, shifted_total = self.get_same_branch_polarization_data(convert_to_muC_per_cm2=True)
