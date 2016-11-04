@@ -82,6 +82,9 @@ class PolarizationChange(object):
 
         shifted_p_elec = []
         shifted_p_ion = []
+        shifted_p_elec_cart = []
+        shifted_p_ion_cart = []
+
         for i in range(L):
             p_e = np.matrix(p_elecs[i]).T
             p_i = np.matrix(p_ions[i]).T
@@ -95,16 +98,56 @@ class PolarizationChange(object):
             p_i_prim = PeriodicSite("C", p_i_cart, primitives[i].lattice,
                                     coords_are_cartesian=True).to_unit_cell.coords
 
+            shifted_p_elec_cart.append(p_e_prim)
+            shifted_p_ion_cart.append(p_i_prim)
+
             p_e_final = (sm.I * (np.matrix(p_i_prim).T)).T.tolist()[0]
             p_i_final = (sm.I * (np.matrix(p_e_prim).T)).T.tolist()[0]
 
             shifted_p_elec.append(p_e_final)
             shifted_p_ion.append(p_i_final)
 
+        volumes = [s.get_primitive_structure().lattice.volume for s in self.structures]
+
+        from pymatgen.io.cif import CifWriter
+        smallest_prim = primitives[volumes.index(min(volumes))]
+
+        s_pe = Structure(smallest_prim.lattice,["C"]*L,shifted_p_elec_cart,coords_are_cartesian=True)
+        s_pi = Structure(smallest_prim.lattice,["C"]*L,shifted_p_ion_cart,coords_are_cartesian=True)
+
+        dists_e, images_e = [], []
+        dists_i, images_i = [], []
+
+        new_cart_es = []
+        new_cart_ie = []
+
+        for i in range(L):
+            if i == 0:
+                dist_e, image_e = s_pe[i].distance_and_image_from_frac_coords([0,0,0])
+                dist_i, image_i = s_pi[i].distance_and_image_from_frac_coords([0,0,0])
+            else:
+                dist_e, image_e = s_pe[i].distance_and_image(s_pe[i-1])
+                dist_i, image_i = s_pi[i].distance_and_image(s_pe[i-1])
+            dists_e.append(dist_e)
+            dists_i.append(dist_i)
+            images_e.append(image_e)
+            images_i.append(image_i)
+
+            s_pe.translate_sites(i, -1 * np.array(image_e), frac_coords=True, to_unit_cell=False)
+            s_pi.translate_sites(i, -1 * np.array(image_i), frac_coords=True, to_unit_cell=False)
+
+        print(dists_e)
+        print(images_e)
+        print(dists_i)
+        print(images_i)
+
+        CifWriter(s_pe).write_file(filename="s_pe.cif")
+        CifWriter(s_pi).write_file(filename="s_pi.cif")
+
         shifted_p_elec_T = np.matrix(shifted_p_elec).T
         shifted_p_ion_T = np.matrix(shifted_p_ion).T
 
-        volumes = np.matrix([s.get_primitive_structure().lattice.volume for s in self.structures])
+        volumes = np.matrix(volumes)
 
         # intervals = np.matrix([[s.lattice.a,
         #                         s.lattice.b,
