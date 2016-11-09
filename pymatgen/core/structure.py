@@ -1837,7 +1837,8 @@ class IMolecule(SiteCollection, MSONable):
         return [(site, dist) for (site, dist) in outer if dist > inner]
 
     def get_boxed_structure(self, a, b, c, images=(1, 1, 1),
-                            random_rotation=False, min_dist=1, cls=None, offset=None, no_cross=False):
+                            random_rotation=False, min_dist=1, cls=None, offset=None,
+                            no_cross = False, truncate=False):
         """
         Creates a Structure from a Molecule by putting the Molecule in the
         center of a orthorhombic box. Useful for creating Structure for
@@ -1860,8 +1861,9 @@ class IMolecule(SiteCollection, MSONable):
             cls: The Structure class to instantiate (defaults to pymatgen
                 structure)
             offset: Translation to offset molecule from center of mass coords
-            no_cross: Whether to forbid molecule coords from extending beyond
-                boundary of box.
+            no_cross: Forbid from any part of the molecule from crossing the unit cell walls.
+                (default False) Does not do anything if truncate == True.
+            truncate: Truncate any atoms that don't fit in box (default False)
 
         Returns:
             Structure containing molecule in a box.
@@ -1874,8 +1876,9 @@ class IMolecule(SiteCollection, MSONable):
         y_range = max(coords[:, 1]) - min(coords[:, 1])
         z_range = max(coords[:, 2]) - min(coords[:, 2])
 
-        if a <= x_range or b <= y_range or c <= z_range:
-            raise ValueError("Box is not big enough to contain Molecule.")
+        if not truncate:
+            if a <= x_range or b <= y_range or c <= z_range:
+                raise ValueError("Box is not big enough to contain Molecule.")
         lattice = Lattice.from_parameters(a * images[0], b * images[1],
                                           c * images[2],
                                           90, 90, 90)
@@ -1883,6 +1886,8 @@ class IMolecule(SiteCollection, MSONable):
         coords = []
 
         centered_coords = self.cart_coords - self.center_of_mass + offset
+
+        trunc_species = []
 
         for i, j, k in itertools.product(list(range(images[0])),
                                          list(range(images[1])),
@@ -1895,6 +1900,16 @@ class IMolecule(SiteCollection, MSONable):
                         angle=random.uniform(-180, 180))
                     m = op.rotation_matrix
                     new_coords = np.dot(m, centered_coords.T).T + box_center
+                    if truncate == True:
+                        trunc_coords = []
+                        for m,n in enumerate(new_coords):
+                            if n[0] > a or n[0] < 0 or n[1] > b or n[1] < 0 or n[2] > c or n[2] < 0:
+                                continue
+                            else:
+                                trunc_coords.append(n)
+                                trunc_species.append(self.species[m])
+                        new_coords = trunc_coords
+
                     if no_cross == True:
                         x_max, x_min = max(new_coords[:, 0]), min(new_coords[:, 0])
                         y_max, y_min = max(new_coords[:, 1]), min(new_coords[:, 1])
@@ -1910,6 +1925,16 @@ class IMolecule(SiteCollection, MSONable):
                         break
             else:
                 new_coords = centered_coords + box_center
+                if truncate == True:
+                    trunc_coords = []
+                    for m, n in enumerate(new_coords):
+                        if n[0] > a or n[0] < 0 or n[1] > b or n[1] < 0 or n[2] > c or n[2] < 0:
+                            continue
+                        else:
+                            trunc_coords.append(n)
+                            trunc_species.append(self.species[m])
+                    new_coords = trunc_coords
+
                 if no_cross == True:
                     x_max, x_min = max(new_coords[:, 0]), min(new_coords[:, 0])
                     y_max, y_min = max(new_coords[:, 1]), min(new_coords[:, 1])
@@ -1920,6 +1945,12 @@ class IMolecule(SiteCollection, MSONable):
         sprops = {k: v * nimages for k, v in self.site_properties.items()}
 
         if cls is None: cls = Structure
+
+        if truncate:
+            return cls(lattice, trunc_species, coords,
+                       coords_are_cartesian=True,
+                       site_properties=sprops).get_sorted_structure()
+
         return cls(lattice, self.species * nimages, coords,
                    coords_are_cartesian=True,
                    site_properties=sprops).get_sorted_structure()
