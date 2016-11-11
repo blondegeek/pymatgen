@@ -112,15 +112,28 @@ class PolarizationChange(object):
         sms = []
 
         for i in range(L):
+            print(i)
+            se = Structure(self.structures[i].lattice,["C"],[np.matrix(p_elecs[i]).A1])
+            si = Structure(self.structures[i].lattice,["C"],[np.matrix(p_ions[i]).A1])
+            print(se)
+
+            p_e_cart = se[0].to_unit_cell
+
+            p_e_cart = p_e_cart.coords
+            print(p_e_cart)
+
+            p_i_cart = si[0].to_unit_cell
+
+            p_i_cart = p_i_cart.coords
 
             #transform abc polarization to xyz
-            p_e = np.matrix(p_elecs[i]).T
-            p_i = np.matrix(p_ions[i]).T
-            sm = np.matrix(self.structures[i].lattice.matrix)
-            sm /= np.linalg.norm(sm, axis=1)
-            sms.append(sm)
-            p_e_cart = (sm * p_e).T.tolist()[0]
-            p_i_cart = (sm * p_i).T.tolist()[0]
+            # p_e = np.matrix(p_elecs[i]).T
+            # p_i = np.matrix(p_ions[i]).T
+            # sm = np.matrix(self.structures[i].lattice.matrix)
+            # sm /= np.linalg.norm(sm, axis=1)
+            # sms.append(sm)
+            # p_e_cart = (sm * p_e).T.tolist()[0]
+            # p_i_cart = (sm * p_i).T.tolist()[0]
 
             shifted_p_elec_cart.append(p_e_cart)
             shifted_p_ion_cart.append(p_i_cart)
@@ -143,8 +156,13 @@ class PolarizationChange(object):
         shifted_p_ion = s_pi.cart_coords
 
         if abc:
-            shifted_p_elec = [(sms[i].I * (np.matrix(shifted_p_elec[i]).T)).T.tolist()[0] for i in range(L)]
-            shifted_p_ion = [(sms[i].I * (np.matrix(shifted_p_ion[i]).T)).T.tolist()[0] for i in range(L)]
+            # shifted_p_elec = [(sms[i].I * (np.matrix(shifted_p_elec[i]).T)).T.tolist()[0] for i in range(L)]
+            # shifted_p_ion = [(sms[i].I * (np.matrix(shifted_p_ion[i]).T)).T.tolist()[0] for i in range(L)]
+            shifted_p_elec = np.multiply(np.matrix([s_pe.lattice.a, s_pe.lattice.b, s_pe.lattice.c]),
+                                         np.matrix(s_pe.frac_coords))
+            shifted_p_ion = np.multiply(np.matrix([s_pi.lattice.a, s_pi.lattice.b, s_pi.lattice.c]),
+                                        np.matrix(s_pi.frac_coords))
+            print(shifted_p_ion.shape)
 
         CifWriter(s_pe).write_file(filename="s_pe.cif")
         CifWriter(s_pi).write_file(filename="s_pi.cif")
