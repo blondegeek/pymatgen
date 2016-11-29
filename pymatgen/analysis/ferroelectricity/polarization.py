@@ -112,28 +112,48 @@ class PolarizationChange(object):
         sms = []
 
         for i in range(L):
-            print(i)
-            se = Structure(self.structures[i].lattice,["C"],[np.matrix(p_elecs[i]).A1])
-            si = Structure(self.structures[i].lattice,["C"],[np.matrix(p_ions[i]).A1])
-            print(se)
+            # Current assumptions:
+            #   Structure.get_primitive_structure() does not rotate xyz coordinates
+            #   Currently assuming that it does not displace xyz coordinates, this might be WRONG.
 
-            p_e_cart = se[0].to_unit_cell
+            # for from abc coords to fractional coords
+            l = self.structures[i].lattice
+            e_frac_coord = np.divide(np.matrix(p_elecs[i]),np.matrix([l.a, l.b, l.c]))
+            i_frac_coord = np.divide(np.matrix(p_ions[i]),np.matrix([l.a, l.b, l.c]))
 
-            p_e_cart = p_e_cart.coords
-            print(p_e_cart)
 
-            p_i_cart = si[0].to_unit_cell
+            se = Structure(l, ["C"],[np.matrix(e_frac_coord).A1])
+            si = Structure(l, ["C"],[np.matrix(i_frac_coord).A1])
 
-            p_i_cart = p_i_cart.coords
+            # get cart coords from structure
+            site = se[0]
+            p_e_cart = site.to_unit_cell
+            p_e_cart = site.coords
+
+            site = si[0]
+            p_i_cart = site.to_unit_cell
+            p_i_cart = site.coords
 
             #transform abc polarization to xyz
             # p_e = np.matrix(p_elecs[i]).T
             # p_i = np.matrix(p_ions[i]).T
-            # sm = np.matrix(self.structures[i].lattice.matrix)
-            # sm /= np.linalg.norm(sm, axis=1)
-            # sms.append(sm)
+            sm = np.matrix(self.structures[i].lattice.matrix)
+            sm /= np.linalg.norm(sm, axis=1)
+            sms.append(sm)
             # p_e_cart = (sm * p_e).T.tolist()[0]
             # p_i_cart = (sm * p_i).T.tolist()[0]
+
+            # shift to unit cell
+            # se = Structure(self.structures[i].lattice,["C"],[p_e_cart], coords_are_cartesian=True)
+            # si = Structure(self.structures[i].lattice,["C"],[p_i_cart], coords_are_cartesian=True)
+
+            # p_e_cart = se[0].to_unit_cell
+            # p_e_cart = p_e_cart.coords
+            #
+            # p_i_cart = si[0].to_unit_cell
+            # p_i_cart = p_i_cart.coords
+
+            # end of new stuff
 
             shifted_p_elec_cart.append(p_e_cart)
             shifted_p_ion_cart.append(p_i_cart)
@@ -156,13 +176,13 @@ class PolarizationChange(object):
         shifted_p_ion = s_pi.cart_coords
 
         if abc:
-            # shifted_p_elec = [(sms[i].I * (np.matrix(shifted_p_elec[i]).T)).T.tolist()[0] for i in range(L)]
-            # shifted_p_ion = [(sms[i].I * (np.matrix(shifted_p_ion[i]).T)).T.tolist()[0] for i in range(L)]
-            shifted_p_elec = np.multiply(np.matrix([s_pe.lattice.a, s_pe.lattice.b, s_pe.lattice.c]),
-                                         np.matrix(s_pe.frac_coords))
-            shifted_p_ion = np.multiply(np.matrix([s_pi.lattice.a, s_pi.lattice.b, s_pi.lattice.c]),
-                                        np.matrix(s_pi.frac_coords))
-            print(shifted_p_ion.shape)
+            shifted_p_elec = [(sms[i].I * (np.matrix(shifted_p_elec[i]).T)).T.tolist()[0] for i in range(L)]
+            shifted_p_ion = [(sms[i].I * (np.matrix(shifted_p_ion[i]).T)).T.tolist()[0] for i in range(L)]
+
+            # Should instead use cart coord to place back in original calculated unit cell
+
+            # shifted_p_elec = np.multiply(np.matrix(s_pe.frac_coords),np.matrix([s_pe.lattice.a, s_pe.lattice.b, s_pe.lattice.c]))
+            # shifted_p_ion = np.multiply(np.matrix(s_pi.frac_coords),np.matrix([s_pi.lattice.a, s_pi.lattice.b, s_pi.lattice.c]))
 
         CifWriter(s_pe).write_file(filename="s_pe.cif")
         CifWriter(s_pi).write_file(filename="s_pi.cif")
