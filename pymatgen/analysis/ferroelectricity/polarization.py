@@ -101,8 +101,8 @@ class PolarizationChange(object):
         # divide volumes before adjusting quantum?
 
         volumes = [s.lattice.volume for s in self.structures]
-        polar_volume = volumes[-1]
-        smallest_vol = min(volumes)
+        polar = self.structures[-1]
+        #smallest_vol = min(volumes)
 
         shifted_p_elec_cart = []
         shifted_p_ion_cart = []
@@ -124,14 +124,16 @@ class PolarizationChange(object):
 
             # get cart coords from structure
             site = se[0]
-            p_e_cart = site.to_unit_cell
+            # Turns out this doesn't work very well
+            # site = site.to_unit_cell
             p_e_cart = site.coords
 
             site = si[0]
-            p_i_cart = site.to_unit_cell
+            # Turns out this doesn't work very well
+            # site = site.to_unit_cell
             p_i_cart = site.coords
 
-            #save lattice unit vectors
+            # Save lattice unit vectors
             sm = np.matrix(self.structures[i].lattice.matrix)
             sm /= np.linalg.norm(sm, axis=1)
             sms.append(sm)
@@ -139,8 +141,8 @@ class PolarizationChange(object):
             shifted_p_elec_cart.append(p_e_cart)
             shifted_p_ion_cart.append(p_i_cart)
 
-        s_pe = Structure(smallest_vol.lattice, ["C"] * L, shifted_p_elec_cart, coords_are_cartesian=True)
-        s_pi = Structure(smallest_vol.lattice, ["C"] * L, shifted_p_ion_cart, coords_are_cartesian=True)
+        s_pe = Structure(polar.lattice, ["C"] * L, shifted_p_elec_cart, coords_are_cartesian=True)
+        s_pi = Structure(polar.lattice, ["C"] * L, shifted_p_ion_cart, coords_are_cartesian=True)
 
         for i in range(L):
             if i == 0:
@@ -160,7 +162,7 @@ class PolarizationChange(object):
             shifted_p_elec = [(sms[i].I * (np.matrix(shifted_p_elec[i]).T)).T.tolist()[0] for i in range(L)]
             shifted_p_ion = [(sms[i].I * (np.matrix(shifted_p_ion[i]).T)).T.tolist()[0] for i in range(L)]
 
-            # Should instead use cart coord to place back in original calculated unit cell
+            # Could instead use cart coord to place back in original calculated unit cell
 
             # shifted_p_elec = np.multiply(np.matrix(s_pe.frac_coords),np.matrix([s_pe.lattice.a, s_pe.lattice.b, s_pe.lattice.c]))
             # shifted_p_ion = np.multiply(np.matrix(s_pi.frac_coords),np.matrix([s_pi.lattice.a, s_pi.lattice.b, s_pi.lattice.c]))
