@@ -98,13 +98,11 @@ class PolarizationChange(object):
 
         L = len(p_elecs)
 
-        # Assuming primitive cells do not rotate xyz coords
-        primitives = [s.get_primitive_structure() for s in self.structures]
+        # divide volumes before adjusting quantum?
 
         volumes = [s.lattice.volume for s in self.structures]
-        p_volumes = [s.get_primitive_structure().lattice.volume for s in self.structures]
-
-        smallest_prim = primitives[p_volumes.index(min(p_volumes))]
+        polar_volume = volumes[-1]
+        smallest_vol = min(volumes)
 
         shifted_p_elec_cart = []
         shifted_p_ion_cart = []
@@ -116,14 +114,13 @@ class PolarizationChange(object):
             #   Structure.get_primitive_structure() does not rotate xyz coordinates
             #   Currently assuming that it does not displace xyz coordinates, this might be WRONG.
 
-            # for from abc coords to fractional coords
+            # For from abc coords as given by VASP to fractional coords
             l = self.structures[i].lattice
             e_frac_coord = np.divide(np.matrix(p_elecs[i]),np.matrix([l.a, l.b, l.c]))
             i_frac_coord = np.divide(np.matrix(p_ions[i]),np.matrix([l.a, l.b, l.c]))
 
-
-            se = Structure(l, ["C"],[np.matrix(e_frac_coord).A1])
-            si = Structure(l, ["C"],[np.matrix(i_frac_coord).A1])
+            se = Structure(l, ["C"], [np.matrix(e_frac_coord).A1])
+            si = Structure(l, ["C"], [np.matrix(i_frac_coord).A1])
 
             # get cart coords from structure
             site = se[0]
@@ -134,32 +131,16 @@ class PolarizationChange(object):
             p_i_cart = site.to_unit_cell
             p_i_cart = site.coords
 
-            #transform abc polarization to xyz
-            # p_e = np.matrix(p_elecs[i]).T
-            # p_i = np.matrix(p_ions[i]).T
+            #save lattice unit vectors
             sm = np.matrix(self.structures[i].lattice.matrix)
             sm /= np.linalg.norm(sm, axis=1)
             sms.append(sm)
-            # p_e_cart = (sm * p_e).T.tolist()[0]
-            # p_i_cart = (sm * p_i).T.tolist()[0]
-
-            # shift to unit cell
-            # se = Structure(self.structures[i].lattice,["C"],[p_e_cart], coords_are_cartesian=True)
-            # si = Structure(self.structures[i].lattice,["C"],[p_i_cart], coords_are_cartesian=True)
-
-            # p_e_cart = se[0].to_unit_cell
-            # p_e_cart = p_e_cart.coords
-            #
-            # p_i_cart = si[0].to_unit_cell
-            # p_i_cart = p_i_cart.coords
-
-            # end of new stuff
 
             shifted_p_elec_cart.append(p_e_cart)
             shifted_p_ion_cart.append(p_i_cart)
 
-        s_pe = Structure(smallest_prim.lattice, ["C"] * L, shifted_p_elec_cart, coords_are_cartesian=True)
-        s_pi = Structure(smallest_prim.lattice, ["C"] * L, shifted_p_ion_cart, coords_are_cartesian=True)
+        s_pe = Structure(smallest_vol.lattice, ["C"] * L, shifted_p_elec_cart, coords_are_cartesian=True)
+        s_pi = Structure(smallest_vol.lattice, ["C"] * L, shifted_p_ion_cart, coords_are_cartesian=True)
 
         for i in range(L):
             if i == 0:
