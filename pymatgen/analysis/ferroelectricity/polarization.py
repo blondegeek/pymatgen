@@ -94,101 +94,45 @@ class PolarizationChange(object):
         abc: return polarization in coordinates of a,b,c (versus x,y,z)
         """
 
-        p_elecs, p_ions = self.get_pelecs_and_pions(convert_to_muC_per_cm2=False)
+        p_elec, p_ion = self.get_pelecs_and_pions()
+        p_tot = p_elec + p_ion
 
-        L = len(p_elecs)
-
-        # divide volumes before adjusting quantum?
-
+        L = len(p_elec)
         volumes = [s.lattice.volume for s in self.structures]
-        polar = self.structures[-1]
-        #smallest_vol = min(volumes)
-
-        shifted_p_elec_cart = []
-        shifted_p_ion_cart = []
-
-        sms = []
+        d_structs = []
+        sites = []
 
         for i in range(L):
-            # Current assumptions:
-            #   Structure.get_primitive_structure() does not rotate xyz coordinates
-            #   Currently assuming that it does not displace xyz coordinates, this might be WRONG.
-
-            # For from abc coords as given by VASP to fractional coords
             l = self.structures[i].lattice
-            e_frac_coord = np.divide(np.matrix(p_elecs[i]),np.matrix([l.a, l.b, l.c]))
-            i_frac_coord = np.divide(np.matrix(p_ions[i]),np.matrix([l.a, l.b, l.c]))
-
-            se = Structure(l, ["C"], [np.matrix(e_frac_coord).A1])
-            si = Structure(l, ["C"], [np.matrix(i_frac_coord).A1])
-
-            # get cart coords from structure
-            site = se[0]
-            # Turns out this doesn't work very well
-            # site = site.to_unit_cell
-            p_e_cart = site.coords
-
-            site = si[0]
-            # Turns out this doesn't work very well
-            # site = site.to_unit_cell
-            p_i_cart = site.coords
-
-            # Save lattice unit vectors
-            sm = np.matrix(self.structures[i].lattice.matrix)
-            sm /= np.linalg.norm(sm, axis=1)
-            sms.append(sm)
-
-            shifted_p_elec_cart.append(p_e_cart)
-            shifted_p_ion_cart.append(p_i_cart)
-
-        s_pe = Structure(polar.lattice, ["C"] * L, shifted_p_elec_cart, coords_are_cartesian=True)
-        s_pi = Structure(polar.lattice, ["C"] * L, shifted_p_ion_cart, coords_are_cartesian=True)
-
-        for i in range(L):
+            frac_coord = np.divide(np.matrix(p_tot[i]), np.matrix([l.a, l.b, l.c]))
+            d = Structure(l, ["C"], [np.matrix(frac_coord).A1])
+            d_structs.append(d)
+            site = d[0]
             if i == 0:
-                continue
-                # site_e, _ = s_pe.get_nearest_site([0, 0, 0], s_pe[i])
-                # site_i, _ = s_pi.get_nearest_site([0, 0, 0], s_pi[i])
+                prev_site = [0, 0, 0]
             else:
-                site_e, _ = s_pe.get_nearest_site(s_pe[i - 1].coords, s_pe[i])
-                site_i, _ = s_pi.get_nearest_site(s_pi[i - 1].coords, s_pi[i])
-            s_pe.translate_sites(i, site_e.coords - s_pe[i].coords, frac_coords=False, to_unit_cell=False)
-            s_pi.translate_sites(i, site_i.coords - s_pi[i].coords, frac_coords=False, to_unit_cell=False)
+                prev_site = sites[-1].coords
+            new_site = d.get_nearest_site(prev_site, site)
+            sites.append(new_site[0])
 
-        shifted_p_elec = s_pe.cart_coords
-        shifted_p_ion = s_pi.cart_coords
+        adjust_pol = []
 
-        if abc:
-            shifted_p_elec = [(sms[i].I * (np.matrix(shifted_p_elec[i]).T)).T.tolist()[0] for i in range(L)]
-            shifted_p_ion = [(sms[i].I * (np.matrix(shifted_p_ion[i]).T)).T.tolist()[0] for i in range(L)]
-
-            # Could instead use cart coord to place back in original calculated unit cell
-
-            # shifted_p_elec = np.multiply(np.matrix(s_pe.frac_coords),np.matrix([s_pe.lattice.a, s_pe.lattice.b, s_pe.lattice.c]))
-            # shifted_p_ion = np.multiply(np.matrix(s_pi.frac_coords),np.matrix([s_pi.lattice.a, s_pi.lattice.b, s_pi.lattice.c]))
-
-        CifWriter(s_pe).write_file(filename="s_pe.cif")
-        CifWriter(s_pi).write_file(filename="s_pi.cif")
-
-        shifted_p_elec_T = np.matrix(shifted_p_elec).T
-        shifted_p_ion_T = np.matrix(shifted_p_ion).T
+        for s,d in zip(sites,d_structs):
+            l = d.lattice
+            adjust_pol.append(np.multiply(s.frac_coords, np.matrix([l.a, l.b, l.c])).A1)
 
         volumes = np.matrix(volumes)
+
+        adjust_pol = np.matrix(adjust_pol)
 
         if convert_to_muC_per_cm2:
             e_to_muC = -1.6021766e-13
             cm2_to_A2 = 1e16
             units = 1.0 / np.matrix(volumes)
             units *= e_to_muC * cm2_to_A2
+            adjust_pol = np.multiply(units.T, adjust_pol)
 
-            shifted_p_elec_T = np.multiply(units, shifted_p_elec_T)
-            shifted_p_ion_T = np.multiply(units, shifted_p_ion_T)
-
-        # Shift so everything starts at zero
-        shifted_p_elec_T -= shifted_p_elec_T[:, 0]
-        shifted_p_ion_T -= shifted_p_ion_T[:, 0]
-
-        return shifted_p_elec_T.T, shifted_p_ion_T.T, None
+        return adjust_pol
 
     def get_polarization_change(self):
         shifted_p_elec, shifted_p_ion, shifted_total = self.get_same_branch_polarization_data(
