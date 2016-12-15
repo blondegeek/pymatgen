@@ -94,6 +94,8 @@ class PolarizationChange(object):
         abc: return polarization in coordinates of a,b,c (versus x,y,z)
         """
 
+        from pymatgen.core.lattice import Lattice
+
         p_elec, p_ion = self.get_pelecs_and_pions()
         p_tot = p_elec + p_ion
 
@@ -102,10 +104,17 @@ class PolarizationChange(object):
         d_structs = []
         sites = []
 
+        factor = 2.0
+
         for i in range(L):
             l = self.structures[i].lattice
-            frac_coord = np.divide(np.matrix(p_tot[i]), np.matrix([l.a, l.b, l.c]))
-            d = Structure(l, ["C"], [np.matrix(frac_coord).A1])
+            # frac_coord = np.divide(np.matrix(p_tot[i]), np.matrix([l.a, l.b, l.c]))
+            frac_coord = np.divide(np.matrix(p_tot[i]), np.matrix([l.a, l.b, l.c]))*factor
+            # new stuff
+            angles = l.angles
+            l_new = Lattice.from_lengths_and_angles((l.a / factor, l.b / factor, l.c / factor), angles)
+            d = Structure(l_new, ["C"], [np.matrix(frac_coord).A1])
+            # d = Structure(l, ["C"], [np.matrix(frac_coord).A1])
             d_structs.append(d)
             site = d[0]
             if i == 0:
@@ -119,7 +128,8 @@ class PolarizationChange(object):
 
         for s,d in zip(sites,d_structs):
             l = d.lattice
-            adjust_pol.append(np.multiply(s.frac_coords, np.matrix([l.a, l.b, l.c])).A1)
+            adjust_pol.append(np.multiply(s.frac_coords, np.matrix([l.a / factor, l.b / factor, l.c / factor])).A1 * factor)
+            # adjust_pol.append(np.multiply(s.frac_coords, np.matrix([l.a, l.b, l.c])).A1)
 
         volumes = np.matrix(volumes)
 
@@ -135,7 +145,5 @@ class PolarizationChange(object):
         return adjust_pol
 
     def get_polarization_change(self):
-        shifted_p_elec, shifted_p_ion, shifted_total = self.get_same_branch_polarization_data(
-            convert_to_muC_per_cm2=True)
-        tot = shifted_p_elec + shifted_p_ion
+        tot = self.get_same_branch_polarization_data(convert_to_muC_per_cm2=True)
         return (tot[-1] - tot[0])
