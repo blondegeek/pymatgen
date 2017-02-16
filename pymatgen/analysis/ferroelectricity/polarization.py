@@ -10,6 +10,7 @@ from pymatgen.core.structure import Structure
 from pymatgen.io.vasp.outputs import Outcar
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.io.cif import CifWriter
+from pymatgen.core.lattice import Lattice
 import numpy as np
 
 """
@@ -417,8 +418,6 @@ class Polarization(object):
         abc: return polarization in coordinates of a,b,c (versus x,y,z)
         """
 
-        from pymatgen.core.lattice import Lattice
-
         p_elec, p_ion = self.get_pelecs_and_pions()
         p_tot = p_elec + p_ion
         p_tot = np.matrix(p_tot)
@@ -434,6 +433,7 @@ class Polarization(object):
             cm2_to_A2 = 1e16
             units = 1.0 / np.matrix(volumes)
             units *= e_to_muC * cm2_to_A2
+            # Convert the total polarization
             p_tot = np.multiply(units.T, p_tot)
             # adjust lattices
             for i in range(L):
@@ -447,13 +447,14 @@ class Polarization(object):
         for i in range(L):
             l = lattices[i]
             frac_coord = np.divide(np.matrix(p_tot[i]), np.matrix([l.a, l.b, l.c]))
-            angles = l.angles
-            l_new = Lattice.from_lengths_and_angles((l.a, l.b, l.c), angles)
-            d = Structure(l_new, ["C"], [np.matrix(frac_coord).A1])
+            d = Structure(l, ["C"], [np.matrix(frac_coord).A1])
             d_structs.append(d)
             site = d[0]
             if i == 0:
+                # Adjust nonpolar polarization to be closest to zero.
+                # This is compatible with both a polarization of zero or a half quantum.
                 prev_site = [0, 0, 0]
+                # An alternative method which leaves the nonpolar polarization where it is.
                 #sites.append(site)
                 #continue
             else:
@@ -468,6 +469,31 @@ class Polarization(object):
         adjust_pol = np.matrix(adjust_pol)
 
         return adjust_pol
+
+    def get_lattice_quanta(self, convert_to_muC_per_cm2 = True):
+        """
+        Returns the quanta along a, b, and c for all structures.
+        """
+        lattices = [s.lattice for s in self.structures]
+        volumes = np.matrix([s.lattice.volume for s in self.structures])
+
+        L = len(self.structures)
+
+        # convert polarizations and lattice lengths prior to adjustment
+        if convert_to_muC_per_cm2:
+            e_to_muC = -1.6021766e-13
+            cm2_to_A2 = 1e16
+            units = 1.0 / np.matrix(volumes)
+            units *= e_to_muC * cm2_to_A2
+            # adjust lattices
+            for i in range(L):
+                lattice = lattices[i]
+                l,a = lattice.lengths_and_angles
+                lattices[i] = Lattice.from_lengths_and_angles(np.array(l)*units.A1[i],a)
+
+        quanta = np.matrix([np.array(l.lengths_and_angles[0]) for l in lattices])
+
+        return quanta
 
     def rms_norm_same_branch_polarization(self, tol=0.05):
         p_tot = self.get_same_branch_polarization_data(convert_to_muC_per_cm2=True)
@@ -493,6 +519,104 @@ class Polarization(object):
     def get_polarization_change(self):
         tot = self.get_same_branch_polarization_data(convert_to_muC_per_cm2=True)
         return (tot[-1] - tot[0])
+
+    def same_branch_splines(self):
+        from scipy.interpolate import UnivariateSpline
+        tot = self.get_same_branch_polarization_data(convert_to_muC_per_cm2=True)
+        L = tot.shape[0]
+        try:
+            sp_a = UnivariateSpline(range(L),tot[:,0].A1)
+        except:
+            sp_a = None
+        try:
+            sp_b = UnivariateSpline(range(L),tot[:,1].A1)
+        except:
+            sp_b = None
+        try:
+            sp_c = UnivariateSpline(range(L),tot[:,2].A1)
+        except:
+            sp_c = None
+        return sp_a, sp_b, sp_c
+
+    def smoothness(self):
+        tot = self.get_same_branch_polarization_data(convert_to_muC_per_cm2=True)
+        L = tot.shape[0]
+        try:
+            sp = self.same_branch_splines()
+        except:
+            print("Something went wrong.")
+            return None
+        sp_latt = [sp[i](range(L)) for i in range(3)]
+        diff = [sp_latt[i] - tot[:,i].A1 for i in range(3)]
+        rms = [np.sqrt(np.sum(np.square(diff[i])) / L) for i in range(3)]
+        #rms_mag_norm = [rms[i] / (max(tot[:,i].A1) - min(tot[:,i].A1)) for i in range(3)]
+        return rms
+
+    def is_smooth(self, rms_mag_norm_tol = 1e-2):
+        """
+        Returns whether spline fitted to adjusted a, b, c polarizations are smooth relative to a tolerance.
+        """
+        tot = self.get_same_branch_polarization_data(convert_to_muC_per_cm2=True)
+        L = tot.shape[0]
+        try:
+            sp = self.same_branch_splines()
+        except:
+            print("Something went wrong.")
+            return None
+        sp_latt = [sp[i](range(L)) for i in range(3)]
+        diff = [sp_latt[i] - tot[:,i].A1 for i in range(3)]
+        rms = [np.sqrt(np.sum(np.square(diff[i])) / L) for i in range(3)]
+        rms_mag_norm = [rms[i] / (max(tot[:,i].A1) - min(tot[:,i].A1)) for i in range(3)]
+        return [rms_mag_norm[i] <= rms_mag_norm_tol for i in range(3)]
+
+
+class EnergyTrend(object):
+    def __init__(self,energies):
+        self.energies = energies
+
+    def spline(self):
+        from scipy.interpolate import UnivariateSpline
+        sp = UnivariateSpline(range(len(self.energies)),self.energies, k=4)
+        return sp
+
+    def smoothness(self):
+        energies = self.energies
+        try:
+            sp = self.spline()
+        except:
+            print("Energy spline failed.")
+            return None
+        spline_energies = sp(range(len(energies)))
+        diff = spline_energies - energies
+        rms = np.sqrt(np.sum(np.square(diff))/len(energies))
+        #rms_mag_norm = rms / (max(energies) - min(energies))
+        return rms
+
+    def is_smooth(self, rms_mag_norm_tol = 1e-2):
+        energies = self.energies
+        try:
+            sp = self.spline()
+        except:
+            print("Energy spline failed.")
+            return None
+        spline_energies = sp(range(len(energies)))
+        diff = spline_energies - energies
+        rms = np.sqrt(np.sum(np.square(diff))/len(energies))
+        rms_mag_norm = rms / (max(energies) - min(energies))
+        return rms_mag_norm <= rms_mag_norm_tol
+
+    def endpoints_minima(self, slope_cutoff = 5e-3):
+        energies = self.energies
+        try:
+            sp = self.spline()
+        except:
+            print("Energy spline failed.")
+            return None
+        der = sp.derivative()
+        spline_energies = sp(range(len(energies)))
+        der_energies = der(range(len(energies)))
+        return {"polar" : abs(der_energies[-1]) <= slope_cutoff,
+                "nonpolar" : abs(der_energies[0]) <= slope_cutoff}
 
 
 class PolarizationChange(object):
