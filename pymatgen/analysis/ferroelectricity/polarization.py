@@ -322,15 +322,15 @@ class Polarization(object):
 
         return quanta
 
-    def get_polarization_change(self):
+    def get_polarization_change(self, convert_to_muC_per_cm2=True):
         """
         Get difference between nonpolar and polar same branch polarization.
         """
         tot = self.get_same_branch_polarization_data(
-            convert_to_muC_per_cm2=True)
+            convert_to_muC_per_cm2=convert_to_muC_per_cm2)
         return tot[-1] - tot[0]
 
-    def get_polarization_change_norm(self):
+    def get_polarization_change_norm(self, convert_to_muC_per_cm2=True):
         """
         Get magnitude of difference between nonpolar and polar same branch
         polarization.
@@ -339,18 +339,18 @@ class Polarization(object):
         a, b, c = polar.lattice.matrix
         a, b, c = a / np.linalg.norm(a), b / np.linalg.norm(
             b), c / np.linalg.norm(c)
-        P = self.get_polarization_change().A1
+        P = self.get_polarization_change(convert_to_muC_per_cm2=convert_to_muC_per_cm2).A1
         P_norm = np.linalg.norm(a * P[0] + b * P[1] + c * P[2])
         return P_norm
 
-    def same_branch_splines(self):
+    def same_branch_splines(self, convert_to_muC_per_cm2=True):
         """
         Fit splines to same branch polarization. This is used to assess any jumps
         in the same branch polarizaiton.
         """
         from scipy.interpolate import UnivariateSpline
         tot = self.get_same_branch_polarization_data(
-            convert_to_muC_per_cm2=True)
+            convert_to_muC_per_cm2=convert_to_muC_per_cm2)
         L = tot.shape[0]
         try:
             sp_a = UnivariateSpline(range(L), tot[:, 0].A1)
@@ -366,12 +366,12 @@ class Polarization(object):
             sp_c = None
         return sp_a, sp_b, sp_c
 
-    def max_spline_jumps(self):
+    def max_spline_jumps(self, convert_to_muC_per_cm2=True):
         """
         Get maximum difference between spline and same branch polarization data.
         """
         tot = self.get_same_branch_polarization_data(
-            convert_to_muC_per_cm2=True)
+            convert_to_muC_per_cm2=convert_to_muC_per_cm2)
         sps = self.same_branch_splines()
         max_jumps = [None, None, None]
         for i, sp in enumerate(sps):
@@ -379,12 +379,12 @@ class Polarization(object):
                 max_jumps[i] = max(tot[:, i].A1 - sp(range(len(tot[:, i].A1))))
         return max_jumps
 
-    def smoothness(self):
+    def smoothness(self, convert_to_muC_per_cm2=True):
         """
         Get rms average difference between spline and same branch polarization data.
         """
         tot = self.get_same_branch_polarization_data(
-            convert_to_muC_per_cm2=True)
+            convert_to_muC_per_cm2=convert_to_muC_per_cm2)
         L = tot.shape[0]
         try:
             sp = self.same_branch_splines()
