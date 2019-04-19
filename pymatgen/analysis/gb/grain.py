@@ -102,7 +102,7 @@ class GrainBoundary(Structure):
         self.init_cell = init_cell
         self.vacuum_thickness = vacuum_thickness
         self.ab_shift = ab_shift
-        super(GrainBoundary, self).__init__(
+        super().__init__(
             lattice, species, coords, validate_proximity=validate_proximity,
             coords_are_cartesian=coords_are_cartesian,
             site_properties=site_properties)
@@ -221,7 +221,7 @@ class GrainBoundary(Structure):
         return "\n".join(outs)
 
     def as_dict(self):
-        d = super(GrainBoundary, self).as_dict()
+        d = super().as_dict()
         d["@module"] = self.__class__.__module__
         d["@class"] = self.__class__.__name__
         d["init_cell"] = self.init_cell.as_dict()
@@ -623,7 +623,7 @@ class GrainBoundaryGenerator:
         translation_v = unit_normal_v * vacuum_thickness
 
         # construct the final lattice
-        whole_matrix_no_vac = half_lattice.matrix
+        whole_matrix_no_vac = np.array(half_lattice.matrix)
         whole_matrix_no_vac[2] = half_lattice.matrix[2] * 2
         whole_matrix_with_vac = whole_matrix_no_vac.copy()
         whole_matrix_with_vac[2] = whole_matrix_no_vac[2] + translation_v * 2
@@ -2278,7 +2278,7 @@ def fix_pbc(structure, matrix=None):
 
     for site in structure:
         spec.append(site.specie)
-        coord = site.frac_coords
+        coord = np.array(site.frac_coords)
         for i in range(3):
             coord[i] -= floor(coord[i])
             if np.allclose(coord[i], 1):

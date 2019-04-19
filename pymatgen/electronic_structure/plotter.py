@@ -705,7 +705,7 @@ class BSPlotterProjected(BSPlotter):
         if len(bs.projections) == 0:
             raise ValueError("try to plot projections"
                              " on a band structure without any")
-        super(BSPlotterProjected, self).__init__(bs)
+        super().__init__(bs)
 
     def _get_projections_by_branches(self, dictio):
         proj = self._bs.get_projections_on_elements_and_orbitals(dictio)
@@ -3756,7 +3756,7 @@ def plot_fermi_surface(data, structure, cbm, energy_levels=[],
                                 for x in bz[jface]):
                         mlab.plot3d(*zip(line[0], line[1]), color=(0, 0, 0),
                                     tube_radius=None, figure=fig)
-        for label, coords in kpoints_dict.iteritems():
+        for label, coords in kpoints_dict.items():
             label_coords = structure.lattice.reciprocal_lattice \
                 .get_cartesian_coords(coords)
             mlab.points3d(*label_coords, scale_factor=points_scale_factor,
@@ -3778,7 +3778,7 @@ def plot_fermi_surface(data, structure, cbm, energy_levels=[],
                             mlab.plot3d(*zip(line[0], line[1]), color=(0, 0, 0),
                                         tube_radius=None, figure=fig)
 
-            for label, coords in kpoints_dict.iteritems():
+            for label, coords in kpoints_dict.items():
                 label_coords = structure.lattice.reciprocal_lattice \
                     .get_cartesian_coords(coords)
                 mlab.points3d(*label_coords, scale_factor=points_scale_factor,
@@ -3801,7 +3801,8 @@ def plot_fermi_surface(data, structure, cbm, energy_levels=[],
 
         polydata.points = (np.array(polydata.points) - [cx, cy, cz]) * 2
 
-        mlab.view(distance='auto')
+        #mlab.view(distance='auto')
+        fig.scene.isometric_view() 
     if interative == True:
         mlab.show()
 
